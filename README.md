@@ -30,6 +30,13 @@
 
 ## 🖼️ Preview & Demonstração Painel
 
+[![Placar Eletrônico](panel_config_1.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
+[![Placar Eletrônico](panel_config_2.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
+[![Placar Eletrônico](panel_config_3.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
+[![Placar Eletrônico](panel_config_4.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
+[![Placar Eletrônico](panel_config_5.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
+[![Placar Eletrônico](panel_config_6.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
+
 [![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
 
 🔗 **Acesse o painel interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
