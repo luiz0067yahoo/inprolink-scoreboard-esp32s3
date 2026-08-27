@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wizard de Configuração Geral - Inprolink System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 850px;
+      background-color: #0a0a0a;
+      border-radius: 16px;
+      padding: 30px;
+      border: 2px solid #222;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 26, 26, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Header */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #222;
+      padding-bottom: 15px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title i {
+      color: #ff1a1a;
+      font-size: 1.8rem;
+    }
+
+    .header-title h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+    }
+
+    .wizard-status {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Stepper Header Bar */
+    .stepper-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      padding: 0 5px;
+      margin-bottom: 10px;
+    }
+
+    .stepper-bar::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 20px;
+      right: 20px;
+      height: 2px;
+      background: #222;
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+
+    .step-indicator {
+      position: relative;
+      z-index: 2;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 0 4px;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #141414;
+      border: 2px solid #333;
+      color: #888;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      transition: all 0.3s;
+    }
+
+    .step-indicator.active .step-circle {
+      border-color: #ff1a1a;
+      background: #ff1a1a;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 26, 26, 0.5);
+    }
+
+    .step-indicator.completed .step-circle {
+      border-color: #2e7d32;
+      background: #2e7d32;
+      color: #fff;
+    }
+
+    .step-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+    .step-indicator.active .step-label { color: #fff; }
+
+    /* Step Content Area */
+    .step-content {
+      display: none;
+      flex-direction: column;
+      gap: 18px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 25px;
+      min-height: 260px;
+    }
+
+    .step-content.active { display: flex; }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ff1a1a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px 14px;
+      background-color: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus { border-color: #ff1a1a; }
+
+    /* Cards Grid */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-top: 5px;
+    }
+
+    .option-card {
+      background: #181818;
+      border: 2px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .option-card:hover { border-color: #444; }
+
+    .option-card.selected {
+      border-color: #ff1a1a;
+      background: #1a0a0a;
+      box-shadow: 0 0 12px rgba(255, 26, 26, 0.25);
+    }
+
+    .option-card i {
+      font-size: 2rem;
+      color: #666;
+    }
+
+    .option-card.selected i { color: #ff1a1a; }
+
+    .option-card span {
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: #ddd;
+    }
+
+    /* Footer Nav */
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      border-top: 2px solid #222;
+      padding-top: 18px;
+    }
+
+    .btn-action {
+      padding: 12px 22px;
+      border-radius: 8px;
+      border: none;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: filter 0.2s;
+    }
+
+    .btn-action:hover { filter: brightness(1.15); }
+    .btn-prev { background: #222; }
+    .btn-next { background: linear-gradient(180deg, #1565c0, #0d47a1); }
+    .btn-finish { background: linear-gradient(180deg, #2e7d32, #1b5e20); display: none; }
+    .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <!-- Header -->
+    <div class="header-bar">
+      <div class="header-title">
+        <i class="fa-solid fa-sliders"></i>
+        <h1>Configuração do Placar</h1>
+      </div>
+      <div class="wizard-status" id="step-status-text">Passo 1 de 6</div>
+    </div>
+
+    <!-- Stepper Navigation Header -->
+    <div class="stepper-bar">
+      <div class="step-indicator active" id="ind-1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Domínio</span>
+      </div>
+      <div class="step-indicator" id="ind-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Modalidade</span>
+      </div>
+      <div class="step-indicator" id="ind-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Campeonato</span>
+      </div>
+      <div class="step-indicator" id="ind-4">
+        <div class="step-circle">4</div>
+        <span class="step-label">Partida</span>
+      </div>
+      <div class="step-indicator" id="ind-5">
+        <div class="step-circle">5</div>
+        <span class="step-label">Etapa</span>
+      </div>
+      <div class="step-indicator" id="ind-6">
+        <div class="step-circle">6</div>
+        <span class="step-label">Rodada</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Domínio -->
+    <div class="step-content active" id="step-1">
+      <div class="card-title">
+        <i class="fa-solid fa-globe"></i> Informar Domínio do Sistema
+      </div>
+      <div class="input-group">
+        <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
+        <input type="text" id="domainInput" class="input-field" placeholder="Ex: placar.inprolink.com.br ou 192.168.1.100" value="placar.inprolink.com.br">
+      </div>
+    </div>
+
+    <!-- Step 2: Modalidade -->
+    <div class="step-content" id="step-2">
+      <div class="card-title">
+        <i class="fa-solid fa-trophy"></i> Selecionar Modalidade
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('modalidade', 'Futebol', this)">
+          <i class="fa-solid fa-futbol"></i>
+          <span>Futebol</span>
+        </div>
+        <div class="option-card" onclick="selectCard('modalidade', 'Vôlei', this)">
+          <i class="fa-solid fa-volleyball"></i>
+          <span>Vôlei</span>
+        </div>
+        <div class="option-card" onclick="selectCard('modalidade', 'Natação', this)">
+          <i class="fa-solid fa-person-swimming"></i>
+          <span>Natação</span>
+        </div>
+        <div class="option-card" onclick="selectCard('modalidade', 'Corrida', this)">
+          <i class="fa-solid fa-person-running"></i>
+          <span>Corrida</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Campeonato -->
+    <div class="step-content" id="step-3">
+      <div class="card-title">
+        <i class="fa-solid fa-award"></i> Selecionar Campeonato
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('campeonato', 'Campeonato 1', this)">
+          <i class="fa-solid fa-medal"></i>
+          <span>Campeonato 1</span>
+        </div>
+        <div class="option-card" onclick="selectCard('campeonato', 'Campeonato 2', this)">
+          <i class="fa-solid fa-medal"></i>
+          <span>Campeonato 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Partida -->
+    <div class="step-content" id="step-4">
+      <div class="card-title">
+        <i class="fa-solid fa-gamepad"></i> Selecionar Partida
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('partida', 'Partida 1', this)">
+          <i class="fa-solid fa-flag-checkered"></i>
+          <span>Partida 1</span>
+        </div>
+        <div class="option-card" onclick="selectCard('partida', 'Partida 2', this)">
+          <i class="fa-solid fa-flag-checkered"></i>
+          <span>Partida 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Etapa -->
+    <div class="step-content" id="step-5">
+      <div class="card-title">
+        <i class="fa-solid fa-layer-group"></i> Selecionar Etapa
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('etapa', 'Etapa 1', this)">
+          <i class="fa-solid fa-sitemap"></i>
+          <span>Etapa 1</span>
+        </div>
+        <div class="option-card" onclick="selectCard('etapa', 'Etapa 2', this)">
+          <i class="fa-solid fa-sitemap"></i>
+          <span>Etapa 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6: Rodada -->
+    <div class="step-content" id="step-6">
+      <div class="card-title">
+        <i class="fa-solid fa-calendar-days"></i> Selecionar Rodada
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('rodada', 'Rodada 1', this)">
+          <i class="fa-solid fa-list-ol"></i>
+          <span>Rodada 1</span>
+        </div>
+        <div class="option-card" onclick="selectCard('rodada', 'Rodada 2', this)">
+          <i class="fa-solid fa-list-ol"></i>
+          <span>Rodada 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Controls -->
+    <div class="footer-bar">
+      <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
+        <i class="fa-solid fa-chevron-left"></i> Anterior
+      </button>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-action btn-next" id="btnNext" onclick="changeStep(1)">
+          Próximo <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <button class="btn-action btn-finish" id="btnFinish" onclick="finishWizard()">
+          <i class="fa-solid fa-check"></i> Concluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const totalSteps = 6;
+
+    // Estado da seleção do Wizard
+    const wizardData = {
+      dominio: 'placar.inprolink.com.br',
+      modalidade: 'Futebol',
+      campeonato: 'Campeonato 1',
+      partida: 'Partida 1',
+      etapa: 'Etapa 1',
+      rodada: 'Rodada 1'
+    };
+
+    function selectCard(field, value, el) {
+      wizardData[field] = value;
+      const parent = el.parentElement;
+      const cards = parent.querySelectorAll('.option-card');
+      cards.forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function changeStep(delta) {
+      const newStep = currentStep + delta;
+      if (newStep < 1 || newStep > totalSteps) return;
+
+      // Validação do Domínio no Passo 1
+      if (currentStep === 1 && delta > 0) {
+        const domVal = document.getElementById('domainInput').value.trim();
+        if (!domVal) {
+          alert('Por favor, informe o domínio.');
+          return;
+        }
+        wizardData.dominio = domVal;
+      }
+
+      document.getElementById(`step-${currentStep}`).classList.remove('active');
+      document.getElementById(`ind-${currentStep}`).classList.remove('active');
+
+      if (delta > 0) {
+        document.getElementById(`ind-${currentStep}`).classList.add('completed');
+      }
+
+      currentStep = newStep;
+
+      document.getElementById(`step-${currentStep}`).classList.add('active');
+      document.getElementById(`ind-${currentStep}`).classList.add('active');
+
+      updateButtons();
+    }
+
+    function updateButtons() {
+      document.getElementById('step-status-text').innerText = `Passo ${currentStep} de ${totalSteps}`;
+      document.getElementById('btnPrev').disabled = (currentStep === 1);
+
+      if (currentStep === totalSteps) {
+        document.getElementById('btnNext').style.display = 'none';
+        document.getElementById('btnFinish').style.display = 'flex';
+      } else {
+        document.getElementById('btnNext').style.display = 'flex';
+        document.getElementById('btnFinish').style.display = 'none';
+      }
+    }
+
+    function finishWizard() {
+      localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
+      alert(`Configuração concluída!\n\nDomínio: ${wizardData.dominio}\nModalidade: ${wizardData.modalidade}\nCampeonato: ${wizardData.campeonato}\nPartida: ${wizardData.partida}\nEtapa: ${wizardData.etapa}\nRodada: ${wizardData.rodada}`);
+      window.location.href = 'painel.html';
+    }
+  </script>
+</body>
+</html>
