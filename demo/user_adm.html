@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Usuários - Inprolink System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 900px;
+      background-color: #0a0a0a;
+      border-radius: 16px;
+      padding: 30px;
+      border: 2px solid #222;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 26, 26, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Header */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #222;
+      padding-bottom: 15px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title i {
+      color: #ff1a1a;
+      font-size: 1.8rem;
+    }
+
+    .header-title h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+    }
+
+    .user-counter {
+      background: #141414;
+      border: 1px solid #333;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-counter span {
+      color: #ff1a1a;
+      font-family: 'Orbitron', monospace;
+      font-size: 1.1rem;
+    }
+
+    /* Grid layout */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 25px;
+    }
+
+    @media (max-width: 768px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Form Section */
+    .form-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ff1a1a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 12px;
+      background-color: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: #ff1a1a;
+    }
+
+    .btn-submit {
+      padding: 12px;
+      background: linear-gradient(180deg, #2e7d32, #1b5e20);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 5px;
+      transition: filter 0.2s;
+    }
+
+    .btn-submit:hover { filter: brightness(1.15); }
+    .btn-cancel { background: #333; display: none; }
+
+    /* List Section */
+    .list-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .users-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .user-item {
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .user-name {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .user-login {
+      font-size: 0.75rem;
+      color: #888;
+      font-family: monospace;
+    }
+
+    .user-role {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      width: fit-content;
+      margin-top: 4px;
+    }
+
+    .role-admin { background: #8e0000; color: #ffcccc; }
+    .role-operator { background: #1565c0; color: #cce5ff; }
+
+    .user-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+
+    .btn-edit { background: #f57f17; color: #000; }
+    .btn-delete { background: #c62828; }
+    .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Footer Nav */
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      border-top: 2px solid #222;
+      padding-top: 15px;
+    }
+
+    .btn-nav {
+      padding: 10px 18px;
+      border-radius: 6px;
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #222;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <!-- Top Header -->
+    <div class="header-bar">
+      <div class="header-title">
+        <i class="fa-solid fa-users-gear"></i>
+        <h1>Gestão de Acessos</h1>
+      </div>
+      <div class="user-counter">
+        Cadastrados: <span id="count-display">1 / 10</span>
+      </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="content-grid">
+      <!-- Form Cadastrar / Editar -->
+      <div class="form-card">
+        <div class="card-title" id="form-title">
+          <i class="fa-solid fa-user-plus"></i> Novo Usuário
+        </div>
+
+        <form id="userForm" onsubmit="handleSave(event)">
+          <input type="hidden" id="userIndex" value="-1">
+
+          <div class="input-group">
+            <label for="fullName">Nome Completo</label>
+            <input type="text" id="fullName" class="input-field" placeholder="Ex: Operador TFC" required autocomplete="off">
+          </div>
+
+          <div class="input-group">
+            <label for="username">Usuário</label>
+            <input type="text" id="username" class="input-field" placeholder="Ex: operador1" required autocomplete="off">
+          </div>
+
+          <div class="input-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" class="input-field" placeholder="Digite a senha" required>
+          </div>
+
+          <div class="input-group">
+            <label for="role">Nível de Permissão</label>
+            <select id="role" class="input-field">
+              <option value="Operador">Operador (Apenas Placar)</option>
+              <option value="Administrador">Administrador (Total)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-submit" id="btnSave">
+            <i class="fa-solid fa-floppy-disk"></i> Salvar Usuário
+          </button>
+          <button type="button" class="btn-submit btn-cancel" id="btnCancel" onclick="resetForm()">
+            Cancelar
+          </button>
+        </form>
+      </div>
+
+      <!-- User List -->
+      <div class="list-card">
+        <div class="card-title">
+          <i class="fa-solid fa-list-check"></i> Usuários Ativos
+        </div>
+
+        <div class="users-list" id="usersContainer">
+          <!-- Renderizado via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-bar">
+      <a href="painel.html" class="btn-nav"><i class="fa-solid fa-arrow-left"></i> Voltar ao Painel</a>
+    </div>
+  </div>
+
+  <script>
+    // Usuário Padrão Inicial
+    let users = JSON.parse(localStorage.getItem('inprolink_users')) || [
+      { name: 'Administrador Inprolink', username: 'inprolink', pass: 'link@link', role: 'Administrador' }
+    ];
+
+    const MAX_USERS = 10;
+
+    function saveToStorage() {
+      localStorage.setItem('inprolink_users', JSON.stringify(users));
+      render();
+    }
+
+    function render() {
+      const container = document.getElementById('usersContainer');
+      const countDisplay = document.getElementById('count-display');
+      
+      countDisplay.innerText = `${users.length} / ${MAX_USERS}`;
+      container.innerHTML = '';
+
+      users.forEach((u, idx) => {
+        const item = document.createElement('div');
+        item.className = 'user-item';
+
+        const roleClass = u.role === 'Administrador' ? 'role-admin' : 'role-operator';
+        const isDefaultAdmin = u.username === 'inprolink';
+
+        item.innerHTML = `
+          <div class="user-info">
+            <div class="user-name">${u.name}</div>
+            <div class="user-login">@${u.username}</div>
+            <span class="user-role ${roleClass}">${u.role}</span>
+          </div>
+          <div class="user-actions">
+            <button class="btn-icon btn-edit" onclick="editUser(${idx})" title="Editar"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn-icon btn-delete" onclick="deleteUser(${idx})" ${isDefaultAdmin ? 'disabled' : ''} title="Excluir"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+
+      // Desabilitar form se atingir o limite no modo criação
+      const editIdx = parseInt(document.getElementById('userIndex').value, 10);
+      if (users.length >= MAX_USERS && editIdx === -1) {
+        document.getElementById('btnSave').disabled = true;
+        document.getElementById('btnSave').style.opacity = '0.5';
+      } else {
+        document.getElementById('btnSave').disabled = false;
+        document.getElementById('btnSave').style.opacity = '1';
+      }
+    }
+
+    function handleSave(e) {
+      e.preventDefault();
+      const idx = parseInt(document.getElementById('userIndex').value, 10);
+      const name = document.getElementById('fullName').value.trim();
+      const username = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value.trim();
+      const role = document.getElementById('role').value;
+
+      // Validação de duplicidade de usuário
+      const exists = users.some((u, i) => u.username === username && i !== idx);
+      if (exists) {
+        alert('Nome de usuário já cadastrado!');
+        return;
+      }
+
+      if (idx === -1) {
+        // Novo Usuário
+        if (users.length >= MAX_USERS) {
+          alert('Limite máximo de 10 usuários atingido!');
+          return;
+        }
+        users.push({ name, username, pass, role });
+      } else {
+        // Edição
+        users[idx] = { name, username, pass, role };
+      }
+
+      saveToStorage();
+      resetForm();
+    }
+
+    function editUser(idx) {
+      const u = users[idx];
+      document.getElementById('userIndex').value = idx;
+      document.getElementById('fullName').value = u.name;
+      document.getElementById('username').value = u.username;
+      document.getElementById('password').value = u.pass;
+      document.getElementById('role').value = u.role;
+
+      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-pen"></i> Editar Usuário';
+      document.getElementById('btnCancel').style.display = 'flex';
+      document.getElementById('btnSave').disabled = false;
+      document.getElementById('btnSave').style.opacity = '1';
+    }
+
+    function deleteUser(idx) {
+      if (users[idx].username === 'inprolink') {
+        alert('O usuário administrador padrão não pode ser removido.');
+        return;
+      }
+
+      if (confirm(`Deseja remover o usuário ${users[idx].username}?`)) {
+        users.splice(idx, 1);
+        saveToStorage();
+        resetForm();
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('userForm').reset();
+      document.getElementById('userIndex').value = -1;
+      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-plus"></i> Novo Usuário';
+      document.getElementById('btnCancel').style.display = 'none';
+      render();
+    }
+
+    // Inicialização
+    render();
+  </script>
+</body>
+</html>
