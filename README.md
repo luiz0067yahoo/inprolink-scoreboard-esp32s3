@@ -5,7 +5,13 @@
 ![PlatformIO](https://img.shields.io/badge/Toolchain-PlatformIO-orange?style=flat-square&logo=platformio)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-## 🖼️ Preview & Demonstração
+## 🖼️ Preview & Demonstração Login 
+
+[![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/login.html)
+
+🔗 **Acesse o Login interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/login.html)
+
+## 🖼️ Preview & Demonstração Painel
 
 [![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
 
