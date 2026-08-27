@@ -440,20 +440,70 @@
   </div>
 
   <script>
-    // Lógica de Contadores (Todos os campos numéricos agora usam 2 dígitos)
-    function changeValue(id, amount) {
-      const el = document.getElementById(id);
-      let val = parseInt(el.innerText, 10) + amount;
-      if (val < 0) val = 0;
-      if (val > 99) val = 99; // Limite de 2 dígitos
-      
-      el.innerText = String(val).padStart(2, '0');
+    if (sessionStorage.getItem('authenticated') !== 'true') {
+      window.location.href = 'login.html';
     }
 
-    // Lógica do Cronômetro (6 dígitos: HH:MM:SS)
+    let ws = null;
     let timerInterval = null;
     let totalSeconds = 0;
+    let swapped = false;
 
+    function connectWs() {
+      const host = window.location.hostname || '192.168.4.1';
+      ws = new WebSocket(`ws://${host}:81/`);
+
+      ws.onopen = () => {
+        console.log('WebSocket conectado!');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'state') {
+            document.getElementById('score-a').innerText = String(data.scoreA).padStart(2, '0');
+            document.getElementById('score-b').innerText = String(data.scoreB).padStart(2, '0');
+            document.getElementById('fouls-a').innerText = String(data.foulsA).padStart(2, '0');
+            document.getElementById('fouls-b').innerText = String(data.foulsB).padStart(2, '0');
+            document.getElementById('period').innerText = String(data.period).padStart(2, '0');
+            document.getElementById('timer-display').innerText = data.timer;
+            
+            // Sincronizar contador local caso ws desconecte depois
+            const parts = data.timer.split(':');
+            if (parts.length === 3) {
+              totalSeconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao processar JSON do WebSocket:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        console.warn('WebSocket desconectado. Tentando reconectar...');
+        setTimeout(connectWs, 2000);
+      };
+    }
+
+    // Lógica de Contadores (Manual)
+    function changeValue(id, amount) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: 'change',
+          target: id,
+          amount: amount
+        }));
+      } else {
+        // Fallback local se offline
+        const el = document.getElementById(id);
+        let val = parseInt(el.innerText, 10) + amount;
+        if (val < 0) val = 0;
+        if (val > 99) val = 99;
+        el.innerText = String(val).padStart(2, '0');
+      }
+    }
+
+    // Lógica do Cronômetro Local (Fallback)
     function updateTimerDisplay() {
       const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
       const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
@@ -461,7 +511,7 @@
       document.getElementById('timer-display').innerText = `${hrs}:${mins}:${secs}`;
     }
 
-    function startTimer() {
+    function startTimerLocal() {
       if (timerInterval) return;
       timerInterval = setInterval(() => {
         totalSeconds++;
@@ -469,19 +519,43 @@
       }, 1000);
     }
 
-    function pauseTimer() {
+    function pauseTimerLocal() {
       clearInterval(timerInterval);
       timerInterval = null;
     }
 
-    function resetTimer() {
-      pauseTimer();
+    function resetTimerLocal() {
+      pauseTimerLocal();
       totalSeconds = 0;
       updateTimerDisplay();
     }
 
+    // Controle do Cronômetro
+    function startTimer() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'timer', command: 'start' }));
+      } else {
+        startTimerLocal();
+      }
+    }
+
+    function pauseTimer() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'timer', command: 'pause' }));
+      } else {
+        pauseTimerLocal();
+      }
+    }
+
+    function resetTimer() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'timer', command: 'reset' }));
+      } else {
+        resetTimerLocal();
+      }
+    }
+
     // Lógica de Troca de Lados
-    let swapped = false;
     function swapSides() {
       swapped = !swapped;
       
@@ -506,7 +580,9 @@
     // Alternar Tela Cheia
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn('Erro ao solicitar tela cheia:', err);
+        });
       } else {
         if (document.exitFullscreen) {
           document.exitFullscreen();
@@ -554,23 +630,39 @@
         'Zerar Placar Completo',
         'Tem certeza de que deseja zerar todos os pontos, faltas, período e o cronômetro?',
         () => {
-          document.getElementById('score-a').innerText = '00';
-          document.getElementById('score-b').innerText = '00';
-          document.getElementById('fouls-a').innerText = '00';
-          document.getElementById('fouls-b').innerText = '00';
-          document.getElementById('period').innerText = '00';
-          resetTimer();
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: 'reset_all' }));
+          } else {
+            // Fallback local
+            document.getElementById('score-a').innerText = '00';
+            document.getElementById('score-b').innerText = '00';
+            document.getElementById('fouls-a').innerText = '00';
+            document.getElementById('fouls-b').innerText = '00';
+            document.getElementById('period').innerText = '00';
+            resetTimerLocal();
+          }
         }
       );
     }
 
     function openSettings() {
-      showAlert(
-        'Configurações',
-        'O painel de configurações de conexão WebSocket com o ESP32 está pronto para ser vinculado.',
+      showConfirm(
+        'Configurações do Sistema',
+        'Selecione a seção que deseja configurar no ESP32:',
+        () => {},
         'fa-solid fa-gear'
       );
+      const buttonsContainer = document.getElementById('modal-buttons');
+      buttonsContainer.innerHTML = `
+        <button class="btn-modal btn-modal-cancel" style="padding:10px 14px;" onclick="closeModal()">Cancelar</button>
+        <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#1b5e20;" onclick="window.location.href='lan_config.html'">Wi-Fi & Rede</button>
+        <button class="btn-modal btn-modal-confirm" style="padding:10px 14px; background:#0d47a1;" onclick="window.location.href='user_adm.html'">Usuários</button>
+        <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#8e24aa;" onclick="window.location.href='panel_config.html.html'">Automação API</button>
+      `;
     }
+
+    // Inicialização
+    connectWs();
   </script>
 </body>
 </html>

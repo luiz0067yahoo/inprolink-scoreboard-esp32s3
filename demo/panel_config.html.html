@@ -431,17 +431,21 @@
   </div>
 
   <script>
+    if (sessionStorage.getItem('authenticated') !== 'true') {
+      window.location.href = 'login.html';
+    }
+
     let currentStep = 1;
     const totalSteps = 6;
 
     // Estado da seleção do Wizard
     const wizardData = {
       dominio: 'placar.inprolink.com.br',
-      modalidade: 'Futebol',
-      campeonato: 'Campeonato 1',
-      partida: 'Partida 1',
-      etapa: 'Etapa 1',
-      rodada: 'Rodada 1'
+      modalidade: '',
+      campeonato: '',
+      partida: '',
+      etapa: '',
+      rodada: ''
     };
 
     function selectCard(field, value, el) {
@@ -452,33 +456,199 @@
       el.classList.add('selected');
     }
 
+    function populateStepOptions(stepId, field, items, iconClass = 'fa-solid fa-circle') {
+      const stepEl = document.getElementById(stepId);
+      const grid = stepEl.querySelector('.options-grid');
+      grid.innerHTML = '';
+      
+      if (!items || items.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 20px;">Nenhuma opção encontrada</div>';
+        return;
+      }
+      
+      items.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'option-card';
+        if (idx === 0) {
+          card.classList.add('selected');
+          wizardData[field] = item.id;
+        }
+        
+        let displayIcon = iconClass;
+        if (field === 'modalidade') {
+          const lowerName = item.nome.toLowerCase();
+          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = 'fa-solid fa-futbol';
+          else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = 'fa-solid fa-volleyball';
+          else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = 'fa-solid fa-person-swimming';
+          else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = 'fa-solid fa-person-running';
+          else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = 'fa-solid fa-basketball';
+        }
+        
+        card.onclick = () => selectCard(field, item.id, card);
+        card.innerHTML = `
+          <i class="${displayIcon}"></i>
+          <span>${item.nome}</span>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function fetchModalidades(domain, callback) {
+      fetch(`/api/proxy/modalidades?domain=${encodeURIComponent(domain)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        populateStepOptions('step-2', 'modalidade', data, 'fa-solid fa-futbol');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de modalidades...', err);
+        const data = [
+          { id: 'Futebol', nome: 'Futebol' },
+          { id: 'Vôlei', nome: 'Vôlei' },
+          { id: 'Natação', nome: 'Natação' },
+          { id: 'Corrida', nome: 'Corrida' }
+        ];
+        populateStepOptions('step-2', 'modalidade', data);
+        callback();
+      });
+    }
+
+    function fetchCampeonatos(domain, mod, callback) {
+      fetch(`/api/proxy/campeonatos?domain=${encodeURIComponent(domain)}&modalidade=${encodeURIComponent(mod)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        populateStepOptions('step-3', 'campeonato', data, 'fa-solid fa-medal');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de campeonatos...', err);
+        const data = [
+          { id: 'Campeonato 1', nome: 'Campeonato 1' },
+          { id: 'Campeonato 2', nome: 'Campeonato 2' }
+        ];
+        populateStepOptions('step-3', 'campeonato', data, 'fa-solid fa-medal');
+        callback();
+      });
+    }
+
+    function fetchPartidas(domain, camp, callback) {
+      fetch(`/api/proxy/partidas?domain=${encodeURIComponent(domain)}&campeonato=${encodeURIComponent(camp)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        populateStepOptions('step-4', 'partida', data, 'fa-solid fa-flag-checkered');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de partidas...', err);
+        const data = [
+          { id: 'Partida 1', nome: 'Partida 1' },
+          { id: 'Partida 2', nome: 'Partida 2' }
+        ];
+        populateStepOptions('step-4', 'partida', data, 'fa-solid fa-flag-checkered');
+        callback();
+      });
+    }
+
+    function fetchEtapas(domain, part, callback) {
+      fetch(`/api/proxy/etapas?domain=${encodeURIComponent(domain)}&partida=${encodeURIComponent(part)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        populateStepOptions('step-5', 'etapa', data, 'fa-solid fa-sitemap');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de etapas...', err);
+        const data = [
+          { id: 'Etapa 1', nome: 'Etapa 1' },
+          { id: 'Etapa 2', nome: 'Etapa 2' }
+        ];
+        populateStepOptions('step-5', 'etapa', data, 'fa-solid fa-sitemap');
+        callback();
+      });
+    }
+
+    function fetchRodadas(domain, etapa, callback) {
+      fetch(`/api/proxy/rodadas?domain=${encodeURIComponent(domain)}&etapa=${encodeURIComponent(etapa)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        populateStepOptions('step-6', 'rodada', data, 'fa-solid fa-list-ol');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de rodadas...', err);
+        const data = [
+          { id: 'Rodada 1', nome: 'Rodada 1' },
+          { id: 'Rodada 2', nome: 'Rodada 2' }
+        ];
+        populateStepOptions('step-6', 'rodada', data, 'fa-solid fa-list-ol');
+        callback();
+      });
+    }
+
     function changeStep(delta) {
       const newStep = currentStep + delta;
       if (newStep < 1 || newStep > totalSteps) return;
 
-      // Validação do Domínio no Passo 1
-      if (currentStep === 1 && delta > 0) {
-        const domVal = document.getElementById('domainInput').value.trim();
-        if (!domVal) {
+      if (delta > 0) {
+        const domain = document.getElementById('domainInput').value.trim();
+        if (!domain) {
           alert('Por favor, informe o domínio.');
           return;
         }
-        wizardData.dominio = domVal;
+        wizardData.dominio = domain;
+
+        if (currentStep === 1) {
+          fetchModalidades(domain, () => proceed());
+          return;
+        } else if (currentStep === 2) {
+          fetchCampeonatos(domain, wizardData.modalidade, () => proceed());
+          return;
+        } else if (currentStep === 3) {
+          fetchPartidas(domain, wizardData.campeonato, () => proceed());
+          return;
+        } else if (currentStep === 4) {
+          fetchEtapas(domain, wizardData.partida, () => proceed());
+          return;
+        } else if (currentStep === 5) {
+          fetchRodadas(domain, wizardData.etapa, () => proceed());
+          return;
+        }
       }
 
-      document.getElementById(`step-${currentStep}`).classList.remove('active');
-      document.getElementById(`ind-${currentStep}`).classList.remove('active');
+      proceed();
 
-      if (delta > 0) {
-        document.getElementById(`ind-${currentStep}`).classList.add('completed');
+      function proceed() {
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`ind-${currentStep}`).classList.remove('active');
+
+        if (delta > 0) {
+          document.getElementById(`ind-${currentStep}`).classList.add('completed');
+        } else {
+          document.getElementById(`ind-${newStep}`).classList.remove('completed');
+        }
+
+        currentStep = newStep;
+
+        document.getElementById(`step-${currentStep}`).classList.add('active');
+        document.getElementById(`ind-${currentStep}`).classList.add('active');
+
+        updateButtons();
       }
-
-      currentStep = newStep;
-
-      document.getElementById(`step-${currentStep}`).classList.add('active');
-      document.getElementById(`ind-${currentStep}`).classList.add('active');
-
-      updateButtons();
     }
 
     function updateButtons() {
@@ -495,9 +665,22 @@
     }
 
     function finishWizard() {
-      localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
-      alert(`Configuração concluída!\n\nDomínio: ${wizardData.dominio}\nModalidade: ${wizardData.modalidade}\nCampeonato: ${wizardData.campeonato}\nPartida: ${wizardData.partida}\nEtapa: ${wizardData.etapa}\nRodada: ${wizardData.rodada}`);
-      window.location.href = 'painel.html';
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wizardData)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Erro ao salvar automação');
+        alert('Configuração de automação salva com sucesso no ESP32!');
+        window.location.href = 'painel.html';
+      })
+      .catch(err => {
+        console.warn('API offline, salvando localmente...', err);
+        localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
+        alert(`Configuração concluída (Simulado)!\n\nDomínio: ${wizardData.dominio}\nModalidade: ${wizardData.modalidade}\nCampeonato: ${wizardData.campeonato}\nPartida: ${wizardData.partida}\nEtapa: ${wizardData.etapa}\nRodada: ${wizardData.rodada}`);
+        window.location.href = 'painel.html';
+      });
     }
   </script>
 </body>

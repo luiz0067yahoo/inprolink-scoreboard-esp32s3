@@ -502,7 +502,7 @@
           <span class="switch-sub">Tentar reconectar ao Wi-Fi em caso de queda de sinal</span>
         </div>
         <label class="switch">
-          <input type="checkbox" checked>
+          <input type="checkbox" id="autoReconnect" checked>
           <span class="slider"></span>
         </label>
       </div>
@@ -523,6 +523,12 @@
   </div>
 
   <script>
+    if (sessionStorage.getItem('authenticated') !== 'true') {
+      window.location.href = 'login.html';
+    }
+
+    let isScanPending = false;
+
     function selectMode(mode) {
       const tabs = document.querySelectorAll('.tab-btn');
       tabs.forEach(t => t.classList.remove('active'));
@@ -553,32 +559,153 @@
       }
     }
 
+    function loadWifiStatus() {
+      fetch('/api/wifi/status')
+      .then(r => {
+        if (!r.ok) throw new Error('Falha ao obter status de rede');
+        return r.json();
+      })
+      .then(data => {
+        document.getElementById('disp-ip').innerText = data.ip || '---';
+        document.getElementById('disp-ssid').innerText = data.ssid || '---';
+        document.getElementById('disp-rssi').innerText = (data.rssi || 0) + ' dBm';
+        document.getElementById('disp-mac').innerText = data.mac || '---';
+
+        // Carregar campos
+        const wifiSsidSelect = document.getElementById('wifiSsid');
+        // Garantir que a rede atual esteja listada
+        if (data.wifiSsid) {
+          wifiSsidSelect.innerHTML = `<option value="${data.wifiSsid}">${data.wifiSsid}</option>`;
+        }
+        document.getElementById('wifiPass').value = data.wifiPass || '';
+        document.getElementById('dhcpToggle').checked = data.dhcp;
+        document.getElementById('staticIp').value = data.staticIp || '';
+        document.getElementById('staticSubnet').value = data.staticSubnet || '';
+        document.getElementById('staticGateway').value = data.staticGateway || '';
+        document.getElementById('staticDns').value = data.staticDns || '';
+
+        document.getElementById('apSsid').value = data.apSsid || '';
+        document.getElementById('apPass').value = data.apPass || '';
+        document.getElementById('apChannel').value = data.apChannel || '6';
+
+        document.getElementById('httpPort').value = data.httpPort || 80;
+        document.getElementById('wsPort').value = data.wsPort || 81;
+        document.getElementById('autoReconnect').checked = data.autoReconnect;
+
+        toggleDhcp();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback local de visualização...', err);
+        // Fallback local caso carregue estático
+        const saved = localStorage.getItem('inprolink_wifi_config');
+        if (saved) {
+          const config = JSON.parse(saved);
+          document.getElementById('wifiSsid').value = config.ssid;
+          document.getElementById('dhcpToggle').checked = config.dhcp;
+          document.getElementById('staticIp').value = config.staticIp;
+          document.getElementById('apSsid').value = config.apSsid;
+          document.getElementById('wsPort').value = config.wsPort;
+        }
+      });
+    }
+
     function scanNetworks() {
+      if (isScanPending) return;
       const icon = document.getElementById('iconScan');
       icon.classList.add('fa-spin');
+      isScanPending = true;
 
-      setTimeout(() => {
+      fetch('/api/wifi/scan')
+      .then(r => {
+        if (!r.ok) throw new Error('Falha no escaneamento');
+        return r.json();
+      })
+      .then(networks => {
         icon.classList.remove('fa-spin');
-        alert('Busca concluída! 3 redes encontradas.');
-      }, 1500);
+        isScanPending = false;
+        
+        const select = document.getElementById('wifiSsid');
+        select.innerHTML = '';
+        if (networks.length === 0) {
+          select.innerHTML = '<option value="">Nenhuma rede encontrada</option>';
+        } else {
+          networks.forEach(net => {
+            const opt = document.createElement('option');
+            opt.value = net.ssid;
+            opt.innerText = `${net.ssid} (${net.rssi} dBm)`;
+            select.appendChild(opt);
+          });
+        }
+        alert(`Busca concluída! ${networks.length} redes encontradas.`);
+      })
+      .catch(err => {
+        icon.classList.remove('fa-spin');
+        isScanPending = false;
+        console.warn('API offline, simulando redes para demonstração...', err);
+        // Fallback simulação
+        const select = document.getElementById('wifiSsid');
+        select.innerHTML = `
+          <option value="Clube_Membros">Clube_Membros (-64 dBm)</option>
+          <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
+          <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
+        `;
+        alert('Busca concluída! 3 redes simuladas.');
+      });
     }
 
     function testConnection() {
-      alert('Enviando pacote de teste ao ESP32... Conexão estável!');
+      fetch('/api/wifi/test')
+      .then(r => r.text())
+      .then(txt => {
+        alert(txt);
+      })
+      .catch(err => {
+        console.warn('API offline.', err);
+        alert('Enviando pacote de teste ao ESP32... Conexão estável! (Simulado)');
+      });
     }
 
     function saveSettings() {
       const config = {
-        ssid: document.getElementById('wifiSsid').value,
+        wifiSsid: document.getElementById('wifiSsid').value,
+        wifiPass: document.getElementById('wifiPass').value,
         dhcp: document.getElementById('dhcpToggle').checked,
         staticIp: document.getElementById('staticIp').value,
+        staticSubnet: document.getElementById('staticSubnet').value,
+        staticGateway: document.getElementById('staticGateway').value,
+        staticDns: document.getElementById('staticDns').value,
         apSsid: document.getElementById('apSsid').value,
-        wsPort: document.getElementById('wsPort').value
+        apPass: document.getElementById('apPass').value,
+        apChannel: parseInt(document.getElementById('apChannel').value, 10) || 6,
+        httpPort: parseInt(document.getElementById('httpPort').value, 10) || 80,
+        wsPort: parseInt(document.getElementById('wsPort').value, 10) || 81,
+        autoReconnect: document.getElementById('autoReconnect').checked
       };
 
-      localStorage.setItem('inprolink_wifi_config', JSON.stringify(config));
-      alert('Configurações salvas no ESP32! O dispositivo será reiniciado.');
+      fetch('/api/wifi/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Erro ao salvar configurações');
+        alert('Configurações salvas no ESP32! O dispositivo será reiniciado.');
+      })
+      .catch(error => {
+        console.warn('API offline, simulando salvamento...', error);
+        localStorage.setItem('inprolink_wifi_config', JSON.stringify({
+          ssid: config.wifiSsid,
+          dhcp: config.dhcp,
+          staticIp: config.staticIp,
+          apSsid: config.apSsid,
+          wsPort: config.wsPort
+        }));
+        alert('Configurações salvas no localStorage (Simulado)!');
+      });
     }
+
+    // Inicialização
+    loadWifiStatus();
   </script>
 </body>
 </html>

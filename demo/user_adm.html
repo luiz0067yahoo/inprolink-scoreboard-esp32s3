@@ -353,17 +353,12 @@
   </div>
 
   <script>
-    // Usuário Padrão Inicial
-    let users = JSON.parse(localStorage.getItem('inprolink_users')) || [
-      { name: 'Administrador Inprolink', username: 'inprolink', pass: 'link@link', role: 'Administrador' }
-    ];
-
-    const MAX_USERS = 10;
-
-    function saveToStorage() {
-      localStorage.setItem('inprolink_users', JSON.stringify(users));
-      render();
+    if (sessionStorage.getItem('authenticated') !== 'true') {
+      window.location.href = 'login.html';
     }
+
+    let users = [];
+    const MAX_USERS = 10;
 
     function render() {
       const container = document.getElementById('usersContainer');
@@ -404,6 +399,25 @@
       }
     }
 
+    function loadUsers() {
+      fetch('/api/users')
+      .then(r => {
+        if (!r.ok) throw new Error('Falha ao obter usuários');
+        return r.json();
+      })
+      .then(data => {
+        users = data;
+        render();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback local...', err);
+        users = JSON.parse(localStorage.getItem('inprolink_users')) || [
+          { name: 'Administrador Inprolink', username: 'inprolink', pass: 'link@link', role: 'Administrador' }
+        ];
+        render();
+      });
+    }
+
     function handleSave(e) {
       e.preventDefault();
       const idx = parseInt(document.getElementById('userIndex').value, 10);
@@ -412,27 +426,44 @@
       const pass = document.getElementById('password').value.trim();
       const role = document.getElementById('role').value;
 
-      // Validação de duplicidade de usuário
+      // Validação de duplicidade de usuário local
       const exists = users.some((u, i) => u.username === username && i !== idx);
       if (exists) {
         alert('Nome de usuário já cadastrado!');
         return;
       }
 
-      if (idx === -1) {
-        // Novo Usuário
-        if (users.length >= MAX_USERS) {
-          alert('Limite máximo de 10 usuários atingido!');
-          return;
-        }
-        users.push({ name, username, pass, role });
-      } else {
-        // Edição
-        users[idx] = { name, username, pass, role };
-      }
+      const userData = { index: idx, name, username, password: pass, role };
 
-      saveToStorage();
-      resetForm();
+      fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Falha ao salvar usuário');
+        return response.json();
+      })
+      .then(data => {
+        users = data;
+        render();
+        resetForm();
+      })
+      .catch(error => {
+        console.warn('API offline, salvando localmente...', error);
+        if (idx === -1) {
+          if (users.length >= MAX_USERS) {
+            alert('Limite máximo de 10 usuários atingido!');
+            return;
+          }
+          users.push({ name, username, pass, role });
+        } else {
+          users[idx] = { name, username, pass, role };
+        }
+        localStorage.setItem('inprolink_users', JSON.stringify(users));
+        render();
+        resetForm();
+      });
     }
 
     function editUser(idx) {
@@ -440,7 +471,8 @@
       document.getElementById('userIndex').value = idx;
       document.getElementById('fullName').value = u.name;
       document.getElementById('username').value = u.username;
-      document.getElementById('password').value = u.pass;
+      // No edit mode, pass default blank or if loaded local show pass
+      document.getElementById('password').value = u.pass || '';
       document.getElementById('role').value = u.role;
 
       document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-pen"></i> Editar Usuário';
@@ -456,9 +488,27 @@
       }
 
       if (confirm(`Deseja remover o usuário ${users[idx].username}?`)) {
-        users.splice(idx, 1);
-        saveToStorage();
-        resetForm();
+        fetch('/api/users/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index: idx })
+        })
+        .then(response => {
+          if (!response.ok) throw new Error('Falha ao remover usuário');
+          return response.json();
+        })
+        .then(data => {
+          users = data;
+          render();
+          resetForm();
+        })
+        .catch(error => {
+          console.warn('API offline, removendo localmente...', error);
+          users.splice(idx, 1);
+          localStorage.setItem('inprolink_users', JSON.stringify(users));
+          render();
+          resetForm();
+        });
       }
     }
 
@@ -471,7 +521,7 @@
     }
 
     // Inicialização
-    render();
+    loadUsers();
   </script>
 </body>
 </html>

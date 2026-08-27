@@ -256,14 +256,30 @@
       const passVal = document.getElementById('password').value.trim();
       const errorMsg = document.getElementById('errorMsg');
 
-      // Credenciais padrão
-      if (userVal === 'inprolink' && passVal === 'link@link') {
-        errorMsg.classList.remove('active');
-        sessionStorage.setItem('authenticated', 'true');
-        window.location.href = 'painel.html';
-      } else {
-        errorMsg.classList.add('active');
-      }
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: userVal, password: passVal })
+      })
+      .then(response => {
+        if (response.ok) {
+          sessionStorage.setItem('authenticated', 'true');
+          window.location.href = 'painel.html';
+        } else {
+          errorMsg.classList.add('active');
+        }
+      })
+      .catch(error => {
+        console.warn('API offline. Tentando login local fallback...', error);
+        // Fallback local se estiver abrindo o arquivo estático diretamente
+        if (userVal === 'inprolink' && passVal === 'link@link') {
+          errorMsg.classList.remove('active');
+          sessionStorage.setItem('authenticated', 'true');
+          window.location.href = 'painel.html';
+        } else {
+          errorMsg.classList.add('active');
+        }
+      });
     }
   </script>
 </body>
