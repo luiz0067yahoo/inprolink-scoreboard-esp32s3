@@ -5,7 +5,7 @@
 ![PlatformIO](https://img.shields.io/badge/Toolchain-PlatformIO-orange?style=flat-square&logo=platformio)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-Sistema embarcado para gerenciamento e controle de placar eletrônico esportivo composto por **20 dígitos independentes** de 7 segmentos em fita de LED **WS2812B** (700 LEDs no total). 
+Sistema embarcado para gerenciamento e controle de placar eletrônico esportivo composto por **16 dígitos independentes** de 7 segmentos em fita de LED **WS2812B** (700 LEDs no total). 
 
 O projeto combina uma interface web responsiva embarcada, resolução de nomes em rede local, persistência de dados em memória Flash (NVS) e atualização automática de placares através do consumo dinâmico de APIs JSON.
 
