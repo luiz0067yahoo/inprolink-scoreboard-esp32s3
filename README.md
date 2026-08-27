@@ -5,6 +5,12 @@
 ![PlatformIO](https://img.shields.io/badge/Toolchain-PlatformIO-orange?style=flat-square&logo=platformio)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
+## 🖼️ Preview & Demonstração
+
+[![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
+
+🔗 **Acesse o painel interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
+
 Sistema embarcado para gerenciamento e controle de placar eletrônico esportivo composto por **16 dígitos independentes** de 7 segmentos em fita de LED **WS2812B** (5 LEDs por segmento, 35 LEDs por dígito, totalizando 560 LEDs).
 
 O projeto combina uma interface web responsiva embarcada, resolução de nomes em rede local, persistência de dados em memória Flash (NVS) e atualização automática de placares através do consumo dinâmico de APIs JSON.
