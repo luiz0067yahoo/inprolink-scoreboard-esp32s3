@@ -19,6 +19,15 @@
 🔗 **Acesse o Cadastro Usuário interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/user_adm.html)
 
 
+## 🖼️ Preview & Demonstração Configuracao de rede 
+
+[![Placar Eletrônico](lan_config.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/lan_config.html)
+
+🔗 **Acesse o Configuracao de rede interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/lan_config.html)
+
+
+
+
 ## 🖼️ Preview & Demonstração Painel
 
 [![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
