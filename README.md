@@ -11,6 +11,14 @@
 
 🔗 **Acesse o Login interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/login.html)
 
+
+## 🖼️ Preview & Demonstração Cadastro Usuário 
+
+[![Placar Eletrônico](user_adm.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/user_adm.html)
+
+🔗 **Acesse o Cadastro Usuário interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/user_adm.html)
+
+
 ## 🖼️ Preview & Demonstração Painel
 
 [![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
