@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuração de Rede - Inprolink System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 900px;
+      background-color: #0a0a0a;
+      border-radius: 16px;
+      padding: 30px;
+      border: 2px solid #222;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 26, 26, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Header */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #222;
+      padding-bottom: 15px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title i {
+      color: #ff1a1a;
+      font-size: 1.8rem;
+    }
+
+    .header-title h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+    }
+
+    .badge-status {
+      background: #111;
+      border: 1px solid #2e7d32;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #81c784;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot-online {
+      width: 8px;
+      height: 8px;
+      background-color: #4caf50;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #4caf50;
+    }
+
+    /* Status Diagnostic Bar */
+    .status-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 15px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+    }
+
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .status-label {
+      font-size: 0.7rem;
+      color: #888;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .status-value {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Orbitron', monospace;
+    }
+
+    /* Tabs Selector */
+    .tab-selector {
+      display: flex;
+      gap: 10px;
+      background: #111;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid #222;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: #888;
+      font-weight: 800;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: #1e1e1e;
+      color: #ff1a1a;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    /* Config Sections */
+    .section-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ff1a1a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    @media (max-width: 600px) {
+      .grid-2col { grid-template-columns: 1fr; }
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 12px;
+      background-color: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: #ff1a1a;
+    }
+
+    .btn-inline {
+      padding: 10px 14px;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      margin-left: 8px;
+      transition: background 0.2s;
+    }
+
+    .btn-inline:hover { background: #333; }
+
+    /* Switch Component */
+    .switch-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #181818;
+      padding: 12px 15px;
+      border-radius: 8px;
+      border: 1px solid #2a2a2a;
+    }
+
+    .switch-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #ddd;
+    }
+
+    .switch-sub {
+      font-size: 0.7rem;
+      color: #777;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #333;
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider { background-color: #2e7d32; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Footer Buttons */
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 2px solid #222;
+      padding-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .btn-nav {
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .btn-back { background: #222; }
+    .btn-save { background: linear-gradient(180deg, #2e7d32, #1b5e20); }
+    .btn-test { background: linear-gradient(180deg, #1565c0, #0d47a1); }
+
+    /* Static IP Fields Toggle */
+    #staticIpFields {
+      display: none;
+      flex-direction: column;
+      gap: 15px;
+      border-top: 1px dashed #333;
+      padding-top: 15px;
+    }
+
+    #staticIpFields.active {
+      display: flex;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <!-- Top Header -->
+    <div class="header-bar">
+      <div class="header-title">
+        <i class="fa-solid fa-wifi"></i>
+        <h1>Configuração de Rede</h1>
+      </div>
+      <div class="badge-status">
+        <div class="dot-online"></div> Conectado (STA)
+      </div>
+    </div>
+
+    <!-- Status Diagnostic Bar -->
+    <div class="status-card">
+      <div class="status-item">
+        <span class="status-label">IP Atual</span>
+        <span class="status-value" id="disp-ip">192.168.1.105</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Rede Wi-Fi</span>
+        <span class="status-value" id="disp-ssid">Clube_Membros</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Sinal (RSSI)</span>
+        <span class="status-value" id="disp-rssi">-64 dBm</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Endereço MAC</span>
+        <span class="status-value" id="disp-mac">24:DC:C3:A1:B2:C3</span>
+      </div>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div class="tab-selector">
+      <button class="tab-btn active" onclick="selectMode('sta')">
+        <i class="fa-solid fa-house-wifi"></i> Wi-Fi Estação (STA)
+      </button>
+      <button class="tab-btn" onclick="selectMode('ap')">
+        <i class="fa-solid fa-tower-cell"></i> Ponto de Acesso (AP)
+      </button>
+      <button class="tab-btn" onclick="selectMode('ports')">
+        <i class="fa-solid fa-network-wired"></i> Portas & Serviços
+      </button>
+    </div>
+
+    <!-- Form Section: STA Mode -->
+    <div class="section-card" id="section-sta">
+      <div class="card-title">
+        <i class="fa-solid fa-signal"></i> Conexão Wi-Fi Local
+      </div>
+
+      <div class="input-group">
+        <label>Rede Wi-Fi (SSID)</label>
+        <div class="input-wrapper">
+          <select id="wifiSsid" class="input-field" style="flex: 1;">
+            <option value="Clube_Membros">Clube_Membros (-64 dBm)</option>
+            <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
+            <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
+          </select>
+          <button type="button" class="btn-inline" onclick="scanNetworks()">
+            <i class="fa-solid fa-arrows-rotate" id="iconScan"></i> Escanear
+          </button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Senha da Rede</label>
+        <input type="password" id="wifiPass" class="input-field" value="12345678" placeholder="Digite a senha do Wi-Fi">
+      </div>
+
+      <!-- Switch DHCP / Static IP -->
+      <div class="switch-container">
+        <div>
+          <span class="switch-label">Endereço IP Automático (DHCP)</span>
+          <span class="switch-sub">Obter IP, Gateway e DNS automaticamente do roteador</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="dhcpToggle" checked onchange="toggleDhcp()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Static IP fields -->
+      <div id="staticIpFields">
+        <div class="grid-2col">
+          <div class="input-group">
+            <label>Endereço IP Fixado</label>
+            <input type="text" id="staticIp" class="input-field" value="192.168.1.200">
+          </div>
+          <div class="input-group">
+            <label>Mascara de Subrede</label>
+            <input type="text" id="staticSubnet" class="input-field" value="255.255.255.0">
+          </div>
+        </div>
+        <div class="grid-2col">
+          <div class="input-group">
+            <label>Gateway Padrão</label>
+            <input type="text" id="staticGateway" class="input-field" value="192.168.1.1">
+          </div>
+          <div class="input-group">
+            <label>Servidor DNS</label>
+            <input type="text" id="staticDns" class="input-field" value="8.8.8.8">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Section: AP Mode -->
+    <div class="section-card" id="section-ap" style="display: none;">
+      <div class="card-title">
+        <i class="fa-solid fa-wifi"></i> Ponto de Acesso Local (ESP32 Hotspot)
+      </div>
+
+      <div class="input-group">
+        <label>Nome do AP (SSID)</label>
+        <input type="text" id="apSsid" class="input-field" value="INPROLINK-PLACAR-AP">
+      </div>
+
+      <div class="input-group">
+        <label>Senha do AP</label>
+        <input type="text" id="apPass" class="input-field" value="inprolink123" placeholder="Mínimo 8 caracteres">
+      </div>
+
+      <div class="grid-2col">
+        <div class="input-group">
+          <label>IP do Hotspot</label>
+          <input type="text" id="apIp" class="input-field" value="192.168.4.1" readonly>
+        </div>
+        <div class="input-group">
+          <label>Canal Wi-Fi</label>
+          <select id="apChannel" class="input-field">
+            <option value="1">Canal 1</option>
+            <option value="6" selected>Canal 6</option>
+            <option value="11">Canal 11</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Section: Ports & Services -->
+    <div class="section-card" id="section-ports" style="display: none;">
+      <div class="card-title">
+        <i class="fa-solid fa-plug"></i> Configuração de Serviços & Portas
+      </div>
+
+      <div class="grid-2col">
+        <div class="input-group">
+          <label>Porta Servidor Web (HTTP)</label>
+          <input type="number" id="httpPort" class="input-field" value="80">
+        </div>
+        <div class="input-group">
+          <label>Porta WebSocket</label>
+          <input type="number" id="wsPort" class="input-field" value="81">
+        </div>
+      </div>
+
+      <div class="switch-container">
+        <div>
+          <span class="switch-label">Reconexão Automática</span>
+          <span class="switch-sub">Tentar reconectar ao Wi-Fi em caso de queda de sinal</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Footer Bar -->
+    <div class="footer-bar">
+      <a href="painel.html" class="btn-nav btn-back"><i class="fa-solid fa-arrow-left"></i> Painel</a>
+      <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn-nav btn-test" onclick="testConnection()">
+          <i class="fa-solid fa-vial"></i> Testar
+        </button>
+        <button type="button" class="btn-nav btn-save" onclick="saveSettings()">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar & Reiniciar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function selectMode(mode) {
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach(t => t.classList.remove('active'));
+
+      document.getElementById('section-sta').style.display = 'none';
+      document.getElementById('section-ap').style.display = 'none';
+      document.getElementById('section-ports').style.display = 'none';
+
+      if (mode === 'sta') {
+        tabs[0].classList.add('active');
+        document.getElementById('section-sta').style.display = 'flex';
+      } else if (mode === 'ap') {
+        tabs[1].classList.add('active');
+        document.getElementById('section-ap').style.display = 'flex';
+      } else if (mode === 'ports') {
+        tabs[2].classList.add('active');
+        document.getElementById('section-ports').style.display = 'flex';
+      }
+    }
+
+    function toggleDhcp() {
+      const isDhcp = document.getElementById('dhcpToggle').checked;
+      const staticFields = document.getElementById('staticIpFields');
+      if (isDhcp) {
+        staticFields.classList.remove('active');
+      } else {
+        staticFields.classList.add('active');
+      }
+    }
+
+    function scanNetworks() {
+      const icon = document.getElementById('iconScan');
+      icon.classList.add('fa-spin');
+
+      setTimeout(() => {
+        icon.classList.remove('fa-spin');
+        alert('Busca concluída! 3 redes encontradas.');
+      }, 1500);
+    }
+
+    function testConnection() {
+      alert('Enviando pacote de teste ao ESP32... Conexão estável!');
+    }
+
+    function saveSettings() {
+      const config = {
+        ssid: document.getElementById('wifiSsid').value,
+        dhcp: document.getElementById('dhcpToggle').checked,
+        staticIp: document.getElementById('staticIp').value,
+        apSsid: document.getElementById('apSsid').value,
+        wsPort: document.getElementById('wsPort').value
+      };
+
+      localStorage.setItem('inprolink_wifi_config', JSON.stringify(config));
+      alert('Configurações salvas no ESP32! O dispositivo será reiniciado.');
+    }
+  </script>
+</body>
+</html>
