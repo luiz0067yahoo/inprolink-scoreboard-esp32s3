@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Administrador - Inprolink System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      background-color: #0a0a0a;
+      border-radius: 16px;
+      padding: 35px 30px;
+      border: 2px solid #222;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 26, 26, 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Cabeçalho e Logo */
+    .brand-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .brand-logo {
+      width: 70px;
+      height: 70px;
+      background: #ffffff;
+      border: 3px solid #1a365d;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px auto;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    }
+
+    .brand-badge {
+      width: 34px;
+      height: 34px;
+      background: #1a365d;
+      border-radius: 50%;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 0.75rem;
+      border: 2px solid #e53e3e;
+    }
+
+    .brand-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.2rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* Form Diagnóstico/Campos */
+    .login-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrapper i {
+      position: absolute;
+      left: 14px;
+      color: #ff1a1a;
+      font-size: 1rem;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      background-color: #141414;
+      border: 2px solid #333;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: #ff1a1a;
+      box-shadow: 0 0 8px rgba(255, 26, 26, 0.4);
+    }
+
+    /* Caixas Informativas */
+    .credentials-box {
+      background: #111;
+      border-left: 3px solid #1565c0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.4;
+    }
+
+    .credentials-box strong {
+      color: #fff;
+    }
+
+    .credentials-box code {
+      background: #222;
+      color: #ff4444;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Botão de Entrada */
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      margin-top: 5px;
+      background: linear-gradient(180deg, #c62828, #8e0000);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      transition: filter 0.2s, transform 0.1s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-login:hover {
+      filter: brightness(1.15);
+    }
+
+    .btn-login:active {
+      transform: scale(0.98);
+    }
+
+    /* Feedback de Erro */
+    .error-msg {
+      color: #ff4444;
+      font-size: 0.8rem;
+      text-align: center;
+      font-weight: 700;
+      display: none;
+    }
+
+    .error-msg.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="brand-header">
+      <div class="brand-logo">
+      </div>
+      <div class="brand-title">INPROLINK</div>
+      <div class="brand-subtitle">Acesso Administrador</div>
+    </div>
+
+    <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="input-group">
+        <label class="input-label" for="username">Usuário</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-user"></i>
+          <input type="text" id="username" class="input-field" placeholder="Digite o usuário" required autocomplete="off">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="password">Senha</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="password" class="input-field" placeholder="Digite a senha" required>
+        </div>
+      </div>
+
+      <div class="credentials-box">
+        <i class="fa-solid fa-circle-info"></i> <strong>Acesso Padrão:</strong><br>
+      </div>
+
+      <div class="error-msg" id="errorMsg">
+        <i class="fa-solid fa-triangle-exclamation"></i> Usuário ou senha incorretos!
+      </div>
+
+      <button type="submit" class="btn-login">
+        Entrar <i class="fa-solid fa-right-to-bracket"></i>
+      </button>
+    </form>
+  </div>
+
+  <script>
+    function handleLogin(event) {
+      event.preventDefault();
+      
+      const userVal = document.getElementById('username').value.trim();
+      const passVal = document.getElementById('password').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+
+      // Credenciais padrão
+      if (userVal === 'inprolink' && passVal === 'link@link') {
+        errorMsg.classList.remove('active');
+        sessionStorage.setItem('authenticated', 'true');
+        window.location.href = 'painel.html';
+      } else {
+        errorMsg.classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>
