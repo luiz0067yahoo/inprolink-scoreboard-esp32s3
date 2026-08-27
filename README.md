@@ -7,7 +7,7 @@
 
 ## 🖼️ Preview & Demonstração Login 
 
-[![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/login.html)
+[![Placar Eletrônico](login.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/login.html)
 
 🔗 **Acesse o Login interativo:** [Live Demo - GitHub Pages](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/login.html)
 
