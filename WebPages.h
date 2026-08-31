@@ -1,13 +1,7 @@
+#ifndef WEB_PAGES_H
+#define WEB_PAGES_H
+
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WebServer.h>
-#include <WebSocketsServer.h>
-#include <ESPmDNS.h>
-#include <Preferences.h>
-#include <HTTPClient.h>
-#include <WiFiClientSecure.h>
-#include <ArduinoJson.h>
-#include <Adafruit_NeoPixel.h>
 
 // ==========================================
 // Embedded Web Assets (HTML/CSS/JS)
@@ -20,8 +14,7 @@ const char login_html[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login Administrador - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     * {
       box-sizing: border-box;
@@ -237,7 +230,7 @@ const char login_html[] PROGMEM = R"rawliteral(
       <div class="input-group">
         <label class="input-label" for="username">Usuário</label>
         <div class="input-wrapper">
-          <i class="fa-solid fa-user"></i>
+          👤
           <input type="text" id="username" class="input-field" placeholder="Digite o usuário" required autocomplete="off">
         </div>
       </div>
@@ -245,22 +238,21 @@ const char login_html[] PROGMEM = R"rawliteral(
       <div class="input-group">
         <label class="input-label" for="password">Senha</label>
         <div class="input-wrapper">
-          <i class="fa-solid fa-lock"></i>
+          🔒
           <input type="password" id="password" class="input-field" placeholder="Digite a senha" required>
         </div>
       </div>
 
       <div class="credentials-box">
-        <i class="fa-solid fa-circle-info"></i> <strong>Acesso Padrão:</strong><br>
-        Usuário: <code>inprolink</code> / Senha: <code>link@link</code>
+        ℹ️ <strong>Acesso Padrão:</strong><br>
       </div>
 
       <div class="error-msg" id="errorMsg">
-        <i class="fa-solid fa-triangle-exclamation"></i> Usuário ou senha incorretos!
+        ⚠️ Usuário ou senha incorretos!
       </div>
 
       <button type="submit" class="btn-login">
-        Entrar <i class="fa-solid fa-right-to-bracket"></i>
+        Entrar 🚪
       </button>
     </form>
   </div>
@@ -280,17 +272,22 @@ const char login_html[] PROGMEM = R"rawliteral(
       })
       .then(response => {
         if (response.ok) {
-          sessionStorage.setItem('authenticated', 'true');
-          window.location.href = 'painel.html';
+          return response.json();
         } else {
-          errorMsg.classList.add('active');
+          throw new Error('Unauthorized');
         }
+      })
+      .then(data => {
+        sessionStorage.setItem('authenticated', 'true');
+        sessionStorage.setItem('role', data.role || 'Operador');
+        window.location.href = 'painel.html';
       })
       .catch(error => {
         console.warn('API offline. Tentando login local fallback...', error);
         if (userVal === 'inprolink' && passVal === 'link@link') {
           errorMsg.classList.remove('active');
           sessionStorage.setItem('authenticated', 'true');
+          sessionStorage.setItem('role', 'Administrador');
           window.location.href = 'painel.html';
         } else {
           errorMsg.classList.add('active');
@@ -309,8 +306,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestão de Usuários - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     * {
       box-sizing: border-box;
@@ -533,6 +529,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
     }
 
     .role-admin { background: #8e0000; color: #ffcccc; }
+    .role-manager { background: #d84315; color: #ffccbc; }
     .role-operator { background: #1565c0; color: #cce5ff; }
 
     .user-actions {
@@ -565,6 +562,29 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
       padding-top: 15px;
     }
 
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: 500;
+      z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+
     .btn-nav {
       padding: 10px 18px;
       border-radius: 6px;
@@ -588,7 +608,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
     <!-- Top Header -->
     <div class="header-bar">
       <div class="header-title">
-        <i class="fa-solid fa-users-gear"></i>
+        🧑‍🔧
         <h1>Gestão de Acessos</h1>
       </div>
       <div class="user-counter">
@@ -601,7 +621,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
       <!-- Form Cadastrar / Editar -->
       <div class="form-card">
         <div class="card-title" id="form-title">
-          <i class="fa-solid fa-user-plus"></i> Novo Usuário
+          👤➕ Novo Usuário
         </div>
 
         <form id="userForm" onsubmit="handleSave(event)">
@@ -609,7 +629,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
 
           <div class="input-group">
             <label for="fullName">Nome Completo</label>
-            <input type="text" id="fullName" class="input-field" placeholder="Ex: Operador TFC" required autocomplete="off">
+            <input type="text" id="fullName" class="input-field" placeholder="Ex: Operador " required autocomplete="off">
           </div>
 
           <div class="input-group">
@@ -626,12 +646,13 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
             <label for="role">Nível de Permissão</label>
             <select id="role" class="input-field">
               <option value="Operador">Operador (Apenas Placar)</option>
+              <option value="Gerente">Gerente (Placar e Automação)</option>
               <option value="Administrador">Administrador (Total)</option>
             </select>
           </div>
 
           <button type="submit" class="btn-submit" id="btnSave">
-            <i class="fa-solid fa-floppy-disk"></i> Salvar Usuário
+            💾 Salvar Usuário
           </button>
           <button type="button" class="btn-submit btn-cancel" id="btnCancel" onclick="resetForm()">
             Cancelar
@@ -642,7 +663,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
       <!-- User List -->
       <div class="list-card">
         <div class="card-title">
-          <i class="fa-solid fa-list-check"></i> Usuários Ativos
+          📋 Usuários Ativos
         </div>
 
         <div class="users-list" id="usersContainer">
@@ -653,11 +674,27 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
 
     <!-- Footer -->
     <div class="footer-bar">
-      <a href="painel.html" class="btn-nav"><i class="fa-solid fa-arrow-left"></i> Voltar ao Painel</a>
+      <a href="painel.html" class="btn-nav">⬅️ Voltar ao Painel</a>
     </div>
   </div>
 
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
   <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
     if (sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
@@ -676,7 +713,9 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
         const item = document.createElement('div');
         item.className = 'user-item';
 
-        const roleClass = u.role === 'Administrador' ? 'role-admin' : 'role-operator';
+        let roleClass = 'role-operator';
+        if (u.role === 'Administrador') roleClass = 'role-admin';
+        else if (u.role === 'Gerente') roleClass = 'role-manager';
         const isDefaultAdmin = u.username === 'inprolink';
 
         item.innerHTML = `
@@ -686,8 +725,8 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
             <span class="user-role ${roleClass}">${u.role}</span>
           </div>
           <div class="user-actions">
-            <button class="btn-icon btn-edit" onclick="editUser(${idx})" title="Editar"><i class="fa-solid fa-pen"></i></button>
-            <button class="btn-icon btn-delete" onclick="deleteUser(${idx})" ${isDefaultAdmin ? 'disabled' : ''} title="Excluir"><i class="fa-solid fa-trash"></i></button>
+            <button class="btn-icon btn-edit" onclick="editUser(${idx})" title="Editar">✏️</button>
+            <button class="btn-icon btn-delete" onclick="deleteUser(${idx})" ${isDefaultAdmin ? 'disabled' : ''} title="Excluir">🗑️</button>
           </div>
         `;
         container.appendChild(item);
@@ -735,7 +774,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
       // Validação de duplicidade de usuário local
       const exists = users.some((u, i) => u.username === username && i !== idx);
       if (exists) {
-        alert('Nome de usuário já cadastrado!');
+        showToast('Nome de usuário já cadastrado!', 'error');
         return;
       }
 
@@ -759,12 +798,12 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
         console.warn('API offline, salvando localmente...', error);
         if (idx === -1) {
           if (users.length >= MAX_USERS) {
-            alert('Limite máximo de 10 usuários atingido!');
+            showToast('Limite máximo de 10 usuários atingido!', 'error');
             return;
           }
-          users.push({ name, username, pass, role });
+          users.push({ name, username, role });
         } else {
-          users[idx] = { name, username, pass, role };
+          users[idx] = { name, username, role };
         }
         localStorage.setItem('inprolink_users', JSON.stringify(users));
         render();
@@ -777,10 +816,10 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
       document.getElementById('userIndex').value = idx;
       document.getElementById('fullName').value = u.name;
       document.getElementById('username').value = u.username;
-      document.getElementById('password').value = u.pass || '';
+      document.getElementById('password').value = '';
       document.getElementById('role').value = u.role;
 
-      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-pen"></i> Editar Usuário';
+      document.getElementById('form-title').innerHTML = '✏️ Editar Usuário';
       document.getElementById('btnCancel').style.display = 'flex';
       document.getElementById('btnSave').disabled = false;
       document.getElementById('btnSave').style.opacity = '1';
@@ -788,7 +827,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
 
     function deleteUser(idx) {
       if (users[idx].username === 'inprolink') {
-        alert('O usuário administrador padrão não pode ser removido.');
+        showToast('O usuário administrador padrão não pode ser removido.', 'error');
         return;
       }
 
@@ -820,7 +859,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
     function resetForm() {
       document.getElementById('userForm').reset();
       document.getElementById('userIndex').value = -1;
-      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-plus"></i> Novo Usuário';
+      document.getElementById('form-title').innerHTML = '👤➕ Novo Usuário';
       document.getElementById('btnCancel').style.display = 'none';
       render();
     }
@@ -839,8 +878,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Configuração de Rede - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     * {
       box-sizing: border-box;
@@ -1140,6 +1178,29 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       flex-wrap: wrap;
     }
 
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: 500;
+      z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+
     .btn-nav {
       padding: 12px 20px;
       border-radius: 8px;
@@ -1179,7 +1240,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
     <!-- Top Header -->
     <div class="header-bar">
       <div class="header-title">
-        <i class="fa-solid fa-wifi"></i>
+        🛜
         <h1>Configuração de Rede</h1>
       </div>
       <div class="badge-status">
@@ -1210,32 +1271,30 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
     <!-- Mode Selector Tabs -->
     <div class="tab-selector">
       <button class="tab-btn active" onclick="selectMode('sta')">
-        <i class="fa-solid fa-house-wifi"></i> Wi-Fi Estação (STA)
+        🏠📶 Wi-Fi Estação (STA)
       </button>
       <button class="tab-btn" onclick="selectMode('ap')">
-        <i class="fa-solid fa-tower-cell"></i> Ponto de Acesso (AP)
+        📡 Ponto de Acesso (AP)
       </button>
       <button class="tab-btn" onclick="selectMode('ports')">
-        <i class="fa-solid fa-network-wired"></i> Portas & Serviços
+        🔌 Portas & Serviços
       </button>
     </div>
 
     <!-- Form Section: STA Mode -->
     <div class="section-card" id="section-sta">
       <div class="card-title">
-        <i class="fa-solid fa-signal"></i> Conexão Wi-Fi Local
+        📶 Conexão Wi-Fi Local
       </div>
 
       <div class="input-group">
         <label>Rede Wi-Fi (SSID)</label>
         <div class="input-wrapper">
           <select id="wifiSsid" class="input-field" style="flex: 1;">
-            <option value="Clube_Membros">Clube_Membros (-64 dBm)</option>
-            <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
-            <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
+           
           </select>
           <button type="button" class="btn-inline" onclick="scanNetworks()">
-            <i class="fa-solid fa-arrows-rotate" id="iconScan"></i> Escanear
+            <span id="iconScan">🔄</span> Escanear
           </button>
         </div>
       </div>
@@ -1285,7 +1344,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
     <!-- Form Section: AP Mode -->
     <div class="section-card" id="section-ap" style="display: none;">
       <div class="card-title">
-        <i class="fa-solid fa-wifi"></i> Ponto de Acesso Local (ESP32 Hotspot)
+        🛜 Ponto de Acesso Local (ESP32 Hotspot)
       </div>
 
       <div class="input-group">
@@ -1317,7 +1376,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
     <!-- Form Section: Ports & Services -->
     <div class="section-card" id="section-ports" style="display: none;">
       <div class="card-title">
-        <i class="fa-solid fa-plug"></i> Configuração de Serviços & Portas
+        🔌 Configuração de Serviços & Portas
       </div>
 
       <div class="grid-2col">
@@ -1345,19 +1404,35 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
 
     <!-- Footer Bar -->
     <div class="footer-bar">
-      <a href="painel.html" class="btn-nav btn-back"><i class="fa-solid fa-arrow-left"></i> Painel</a>
+      <a href="painel.html" class="btn-nav btn-back">⬅️ Painel</a>
       <div style="display: flex; gap: 10px;">
         <button type="button" class="btn-nav btn-test" onclick="testConnection()">
-          <i class="fa-solid fa-vial"></i> Testar
+          🧪 Testar
         </button>
         <button type="button" class="btn-nav btn-save" onclick="saveSettings()">
-          <i class="fa-solid fa-floppy-disk"></i> Salvar & Reiniciar
+          💾 Salvar & Reiniciar
         </button>
       </div>
     </div>
   </div>
 
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
   <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
     if (sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
@@ -1469,7 +1544,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
             select.appendChild(opt);
           });
         }
-        alert(`Busca concluída! ${networks.length} redes encontradas.`);
+        showToast(`Busca concluída! ${networks.length} redes encontradas.`, 'success');
       })
       .catch(err => {
         icon.classList.remove('fa-spin');
@@ -1479,9 +1554,8 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
         select.innerHTML = `
           <option value="Clube_Membros">Clube_Membros (-64 dBm)</option>
           <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
-          <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
         `;
-        alert('Busca concluída! 3 redes simuladas.');
+        showToast('Busca concluída! 3 redes simuladas.', 'success');
       });
     }
 
@@ -1489,11 +1563,11 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       fetch('/api/wifi/test')
       .then(r => r.text())
       .then(txt => {
-        alert(txt);
+        showToast(txt, 'success');
       })
       .catch(err => {
         console.warn('API offline.', err);
-        alert('Enviando pacote de teste ao ESP32... Conexão estável! (Simulado)');
+        showToast('Enviando pacote de teste ao ESP32... Conexão estável! (Simulado)', 'success');
       });
     }
 
@@ -1521,7 +1595,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       })
       .then(response => {
         if (!response.ok) throw new Error('Erro ao salvar configurações');
-        alert('Configurações salvas no ESP32! O dispositivo será reiniciado.');
+        showToast('Configurações salvas no ESP32! O dispositivo será reiniciado.', 'success');
       })
       .catch(error => {
         console.warn('API offline, simulando salvamento...', error);
@@ -1532,7 +1606,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
           apSsid: config.apSsid,
           wsPort: config.wsPort
         }));
-        alert('Configurações salvas no localStorage (Simulado)!');
+        showToast('Configurações salvas no localStorage (Simulado)!', 'success');
       });
     }
 
@@ -1550,8 +1624,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wizard de Configuração Geral - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     * {
       box-sizing: border-box;
@@ -1813,6 +1886,18 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     .btn-next { background: linear-gradient(180deg, #1565c0, #0d47a1); }
     .btn-finish { background: linear-gradient(180deg, #2e7d32, #1b5e20); display: none; }
     .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 500; z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
   </style>
 </head>
 <body>
@@ -1821,14 +1906,28 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Header -->
     <div class="header-bar">
       <div class="header-title">
-        <i class="fa-solid fa-sliders"></i>
+        🎚️
         <h1>Configuração do Placar</h1>
       </div>
-      <div class="wizard-status" id="step-status-text">Passo 1 de 6</div>
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <div class="wizard-status" id="step-status-text">Passo 1 de 6</div>
+        <button class="btn-action" style="background: #e53935; padding: 6px 12px; font-size: 14px; border-radius: 6px;" onclick="window.location.href='painel.html'">❌ Fechar</button>
+      </div>
+    </div>
+
+    <!-- Mode Selection -->
+    <div class="mode-selector" style="text-align: center; margin-bottom: 20px;">
+      <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="automatico" checked onchange="toggleMode()"> 🤖 Automático (Via API)
+      </label>
+      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="manual" onchange="toggleMode()"> ✍️ Manual (Local)
+      </label>
     </div>
 
     <!-- Stepper Navigation Header -->
-    <div class="stepper-bar">
+    <div id="wizard-container">
+      <div class="stepper-bar">
       <div class="step-indicator active" id="ind-1">
         <div class="step-circle">1</div>
         <span class="step-label">Domínio</span>
@@ -1858,7 +1957,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 1: Domínio -->
     <div class="step-content active" id="step-1">
       <div class="card-title">
-        <i class="fa-solid fa-globe"></i> Informar Domínio do Sistema
+        🌐 Informar Domínio do Sistema
       </div>
       <div class="input-group">
         <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
@@ -1869,23 +1968,23 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 2: Modalidade -->
     <div class="step-content" id="step-2">
       <div class="card-title">
-        <i class="fa-solid fa-trophy"></i> Selecionar Modalidade
+        🏆 Selecionar Modalidade
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('modalidade', 'Futebol', this)">
-          <i class="fa-solid fa-futbol"></i>
+          ⚽
           <span>Futebol</span>
         </div>
         <div class="option-card" onclick="selectCard('modalidade', 'Vôlei', this)">
-          <i class="fa-solid fa-volleyball"></i>
+          🏐
           <span>Vôlei</span>
         </div>
         <div class="option-card" onclick="selectCard('modalidade', 'Natação', this)">
-          <i class="fa-solid fa-person-swimming"></i>
+          🏊
           <span>Natação</span>
         </div>
         <div class="option-card" onclick="selectCard('modalidade', 'Corrida', this)">
-          <i class="fa-solid fa-person-running"></i>
+          🏃‍♀️
           <span>Corrida</span>
         </div>
       </div>
@@ -1894,15 +1993,15 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 3: Campeonato -->
     <div class="step-content" id="step-3">
       <div class="card-title">
-        <i class="fa-solid fa-award"></i> Selecionar Campeonato
+        🏅 Selecionar Campeonato
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('campeonato', 'Campeonato 1', this)">
-          <i class="fa-solid fa-medal"></i>
+          🥇
           <span>Campeonato 1</span>
         </div>
         <div class="option-card" onclick="selectCard('campeonato', 'Campeonato 2', this)">
-          <i class="fa-solid fa-medal"></i>
+          🥇
           <span>Campeonato 2</span>
         </div>
       </div>
@@ -1911,15 +2010,15 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 4: Partida -->
     <div class="step-content" id="step-4">
       <div class="card-title">
-        <i class="fa-solid fa-gamepad"></i> Selecionar Partida
+        🎮 Selecionar Partida
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('partida', 'Partida 1', this)">
-          <i class="fa-solid fa-flag-checkered"></i>
+          🏁
           <span>Partida 1</span>
         </div>
         <div class="option-card" onclick="selectCard('partida', 'Partida 2', this)">
-          <i class="fa-solid fa-flag-checkered"></i>
+          🏁
           <span>Partida 2</span>
         </div>
       </div>
@@ -1928,15 +2027,15 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 5: Etapa -->
     <div class="step-content" id="step-5">
       <div class="card-title">
-        <i class="fa-solid fa-layer-group"></i> Selecionar Etapa
+        🗂️ Selecionar Etapa
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('etapa', 'Etapa 1', this)">
-          <i class="fa-solid fa-sitemap"></i>
+          🗃️
           <span>Etapa 1</span>
         </div>
         <div class="option-card" onclick="selectCard('etapa', 'Etapa 2', this)">
-          <i class="fa-solid fa-sitemap"></i>
+          🗃️
           <span>Etapa 2</span>
         </div>
       </div>
@@ -1945,15 +2044,15 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 6: Rodada -->
     <div class="step-content" id="step-6">
       <div class="card-title">
-        <i class="fa-solid fa-calendar-days"></i> Selecionar Rodada
+        📅 Selecionar Rodada
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('rodada', 'Rodada 1', this)">
-          <i class="fa-solid fa-list-ol"></i>
+          🔢
           <span>Rodada 1</span>
         </div>
         <div class="option-card" onclick="selectCard('rodada', 'Rodada 2', this)">
-          <i class="fa-solid fa-list-ol"></i>
+          🔢
           <span>Rodada 2</span>
         </div>
       </div>
@@ -1962,27 +2061,74 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Footer Controls -->
     <div class="footer-bar">
       <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
-        <i class="fa-solid fa-chevron-left"></i> Anterior
+        ◀️ Anterior
       </button>
 
       <div style="display: flex; gap: 10px;">
         <button class="btn-action btn-next" id="btnNext" onclick="changeStep(1)">
-          Próximo <i class="fa-solid fa-chevron-right"></i>
+          Próximo ▶️
         </button>
         <button class="btn-action btn-finish" id="btnFinish" onclick="finishWizard()">
-          <i class="fa-solid fa-check"></i> Concluir
+          ✅ Concluir
         </button>
       </div>
     </div>
+    </div> <!-- End wizard-container -->
+
+    <!-- Container do Manual -->
+    <div id="manual-container" style="display: none; padding: 20px; background: #1a1a1a; border-radius: 12px; margin-top: 15px;">
+     
+      <button class="btn-action btn-finish" style="width: 100%; margin-top: 20px; justify-content: center;" onclick="saveManualConfig()">
+        ✅ Salvar Configuração Manual
+      </button>
+    </div>
+
+  </div>
+
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
   </div>
 
   <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
     if (sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
 
     let currentStep = 1;
     const totalSteps = 6;
+    let currentMode = 'automatico';
+
+    function toggleMode() {
+      const mode = document.querySelector('input[name="automationMode"]:checked').value;
+      currentMode = mode;
+      
+      wizardData.mode = mode;
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wizardData)
+      }).catch(e => console.log(e));
+
+      if (mode === 'automatico') {
+        document.getElementById('wizard-container').style.display = 'block';
+        document.getElementById('manual-container').style.display = 'none';
+      } else {
+        document.getElementById('wizard-container').style.display = 'none';
+        document.getElementById('manual-container').style.display = 'block';
+      }
+    }
 
     // Estado da seleção do Wizard
     const wizardData = {
@@ -2002,7 +2148,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       el.classList.add('selected');
     }
 
-    function populateStepOptions(stepId, field, items, iconClass = 'fa-solid fa-circle') {
+    function populateStepOptions(stepId, field, items, iconClass = '⚪') {
       const stepEl = document.getElementById(stepId);
       const grid = stepEl.querySelector('.options-grid');
       grid.innerHTML = '';
@@ -2023,16 +2169,16 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         let displayIcon = iconClass;
         if (field === 'modalidade') {
           const lowerName = item.nome.toLowerCase();
-          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = 'fa-solid fa-futbol';
-          else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = 'fa-solid fa-volleyball';
-          else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = 'fa-solid fa-person-swimming';
-          else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = 'fa-solid fa-person-running';
-          else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = 'fa-solid fa-basketball';
+          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = '⚽';
+          else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = '🏐';
+          else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = '🏊';
+          else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = '🏃';
+          else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = '🏀';
         }
         
         card.onclick = () => selectCard(field, item.id, card);
         card.innerHTML = `
-          <i class="${displayIcon}"></i>
+          <span style="font-size: 24px;">${displayIcon}</span>
           <span>${item.nome}</span>
         `;
         grid.appendChild(card);
@@ -2154,7 +2300,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       if (delta > 0) {
         const domain = document.getElementById('domainInput').value.trim();
         if (!domain) {
-          alert('Por favor, informe o domínio.');
+          showToast('Por favor, informe o domínio.', 'error');
           return;
         }
         wizardData.dominio = domain;
@@ -2212,6 +2358,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     function finishWizard() {
+      wizardData.mode = "automatico";
       fetch('/api/automation/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2219,14 +2366,40 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       })
       .then(r => {
         if (!r.ok) throw new Error('Erro ao salvar automação');
-        alert('Configuração de automação salva com sucesso no ESP32!');
+        showToast('Configuração de automação salva com sucesso no ESP32!', 'success');
         window.location.href = 'painel.html';
       })
       .catch(err => {
         console.warn('API offline, salvando localmente...', err);
         localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
-        alert(`Configuração concluída (Simulado)!\n\nDomínio: ${wizardData.dominio}\nModalidade: ${wizardData.modalidade}\nCampeonato: ${wizardData.campeonato}\nPartida: ${wizardData.partida}\nEtapa: ${wizardData.etapa}\nRodada: ${wizardData.rodada}`);
+        showToast('Configuração concluída (Simulado)!', 'success');
         window.location.href = 'painel.html';
+      });
+    }
+
+    function saveManualConfig() {
+      const data = {
+        mode: "manual",
+        dominio: document.getElementById('manual_dominio').value.trim(),
+        modalidade: document.getElementById('manual_modalidade').value.trim(),
+        campeonato: document.getElementById('manual_campeonato').value.trim(),
+        partida: document.getElementById('manual_partida').value.trim(),
+        etapa: document.getElementById('manual_etapa').value.trim(),
+        rodada: document.getElementById('manual_rodada').value.trim()
+      };
+      
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Erro ao salvar');
+        showToast('Configuração manual salva com sucesso no ESP32!', 'success');
+        window.location.href = 'painel.html';
+      })
+      .catch(err => {
+        showToast('Erro ao salvar. Verifique a conexão com o ESP32.', 'error');
       });
     }
   </script>
@@ -2241,8 +2414,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Placar Eletrônico - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     * {
       box-sizing: border-box;
@@ -2340,6 +2512,42 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     .digits-2 { font-size: 3.8rem; letter-spacing: 4px; }
     .digits-timer { font-size: 5rem; letter-spacing: 6px; padding: 10px 30px; }
+
+    input.led-text {
+      background: transparent;
+      border: none;
+      outline: none;
+      text-align: center;
+      width: 1.5em;
+    }
+    input.led-text[readonly] { pointer-events: none; }
+
+    /* Mode Selector */
+    .mode-selector {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #222;
+    }
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #aaa;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .radio-label:hover { color: #fff; }
+    .radio-label input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #ff1a1a;
+      cursor: pointer;
+    }
 
     /* Control Buttons (+ / -) */
     .btn-controls {
@@ -2558,6 +2766,18 @@ const char painel_html[] PROGMEM = R"rawliteral(
 <body>
 
   <div class="scoreboard-container">
+    <!-- Seletor de Modo -->
+    <div class="mode-selector">
+      <label class="radio-label">
+        <input type="radio" name="panelMode" value="automatico" onchange="setPanelMode(this.value)" checked>
+        🤖 Automático API
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="panelMode" value="manual" onchange="setPanelMode(this.value)">
+        🛠️ Manual Local
+      </label>
+    </div>
+
     <!-- Linha Superior: Time A, Logo, Time B -->
     <div class="row-top">
       <!-- Time A (2 dígitos) -->
@@ -2565,11 +2785,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
         <span class="module-title" id="title-team-a">TIME A</span>
         <div class="display-group">
           <div class="led-frame">
-            <span class="led-text digits-2" id="score-a">00</span>
+            <input type="text" class="led-text digits-2" id="score-a" value="00" maxlength="2" onchange="manualInputChanged('score-a')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('score-a', 1)"><i class="fa-solid fa-plus"></i></button>
-            <button class="btn-step btn-minus" onclick="changeValue('score-a', -1)"><i class="fa-solid fa-minus"></i></button>
+            <button class="btn-step btn-plus" onclick="changeValue('score-a', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('score-a', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">PONTOS</span>
@@ -2577,8 +2797,6 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
       <!-- Logo Central -->
       <div class="logo-container">
-        <div class="logo-badge">TFC</div>
-        <div class="logo-text">Toledão, O Clube da Família</div>
       </div>
 
       <!-- Time B (2 dígitos) -->
@@ -2586,11 +2804,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
         <span class="module-title" id="title-team-b">TIME B</span>
         <div class="display-group">
           <div class="led-frame">
-            <span class="led-text digits-2" id="score-b">00</span>
+            <input type="text" class="led-text digits-2" id="score-b" value="00" maxlength="2" onchange="manualInputChanged('score-b')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('score-b', 1)"><i class="fa-solid fa-plus"></i></button>
-            <button class="btn-step btn-minus" onclick="changeValue('score-b', -1)"><i class="fa-solid fa-minus"></i></button>
+            <button class="btn-step btn-plus" onclick="changeValue('score-b', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('score-b', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">PONTOS</span>
@@ -2600,12 +2818,12 @@ const char painel_html[] PROGMEM = R"rawliteral(
     <!-- Linha Central: Cronômetro (6 dígitos) -->
     <div class="row-middle">
       <div class="led-frame">
-        <span class="led-text digits-timer" id="timer-display">00:00:00</span>
+        <input type="text" class="led-text digits-timer" id="timer-display" value="00:00:00" maxlength="8" placeholder="HH:MM:SS" onchange="timerInputChanged()" readonly>
       </div>
       <div class="timer-actions">
-        <button class="btn-timer btn-start" onclick="startTimer()"><i class="fa-solid fa-play"></i> Iniciar</button>
-        <button class="btn-timer btn-pause" onclick="pauseTimer()"><i class="fa-solid fa-pause"></i> Pausar</button>
-        <button class="btn-timer btn-reset-time" onclick="resetTimer()"><i class="fa-solid fa-rotate-right"></i> Zerar Tempo</button>
+        <button class="btn-timer btn-start" onclick="startTimer()">▶️ Iniciar</button>
+        <button class="btn-timer btn-pause" onclick="pauseTimer()">⏸️ Pausar</button>
+        <button class="btn-timer btn-reset-time" onclick="resetTimer()">↩️ Zerar Tempo</button>
       </div>
     </div>
 
@@ -2616,11 +2834,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
         <span class="module-title" id="title-fouls-a">FALTAS A</span>
         <div class="display-group">
           <div class="led-frame">
-            <span class="led-text digits-2" id="fouls-a">00</span>
+            <input type="text" class="led-text digits-2" id="fouls-a" value="00" maxlength="2" onchange="manualInputChanged('fouls-a')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('fouls-a', 1)"><i class="fa-solid fa-plus"></i></button>
-            <button class="btn-step btn-minus" onclick="changeValue('fouls-a', -1)"><i class="fa-solid fa-minus"></i></button>
+            <button class="btn-step btn-plus" onclick="changeValue('fouls-a', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('fouls-a', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">FALTAS</span>
@@ -2631,11 +2849,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
         <span class="module-title">PERÍODO</span>
         <div class="display-group">
           <div class="led-frame">
-            <span class="led-text digits-2" id="period">00</span>
+            <input type="text" class="led-text digits-2" id="period" value="00" maxlength="2" onchange="manualInputChanged('period')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('period', 1)"><i class="fa-solid fa-plus"></i></button>
-            <button class="btn-step btn-minus" onclick="changeValue('period', -1)"><i class="fa-solid fa-minus"></i></button>
+            <button class="btn-step btn-plus" onclick="changeValue('period', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('period', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">PERÍODO</span>
@@ -2646,11 +2864,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
         <span class="module-title" id="title-fouls-b">FALTAS B</span>
         <div class="display-group">
           <div class="led-frame">
-            <span class="led-text digits-2" id="fouls-b">00</span>
+            <input type="text" class="led-text digits-2" id="fouls-b" value="00" maxlength="2" onchange="manualInputChanged('fouls-b')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('fouls-b', 1)"><i class="fa-solid fa-plus"></i></button>
-            <button class="btn-step btn-minus" onclick="changeValue('fouls-b', -1)"><i class="fa-solid fa-minus"></i></button>
+            <button class="btn-step btn-plus" onclick="changeValue('fouls-b', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('fouls-b', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">FALTAS</span>
@@ -2659,17 +2877,18 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     <!-- Barra de Ações Inferior -->
     <div class="row-footer">
-      <button class="btn-action btn-purple" onclick="confirmResetScoreboard()"><i class="fa-solid fa-rotate"></i> Zerar Placar</button>
-      <button class="btn-action btn-orange" onclick="swapSides()"><i class="fa-solid fa-right-left"></i> Trocar Lado</button>
-      <button class="btn-action btn-teal" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Configurações</button>
-      <button class="btn-action btn-blue" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i> Tela Cheia</button>
+      <button class="btn-action" style="background:#d32f2f" onclick="logout()">🚪 Sair</button>
+      <button class="btn-action btn-purple" onclick="confirmResetScoreboard()">↩️ Zerar Placar</button>
+      <button class="btn-action btn-orange" onclick="swapSides()">🔀 Trocar Lado</button>
+      <button id="btn-settings" class="btn-action btn-teal" onclick="openSettings()">⚙️ Configurações</button>
+      <button class="btn-action btn-blue" onclick="toggleFullscreen()">↕️↔️ Tela Cheia</button>
     </div>
   </div>
 
   <!-- OVERLAY / MODAL -->
   <div id="modal-overlay" class="overlay">
     <div class="modal-box">
-      <div class="modal-icon" id="modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="modal-icon" id="modal-icon">⚠️</div>
       <h3 class="modal-title" id="modal-title">Atenção</h3>
       <p class="modal-message" id="modal-message">Mensagem de confirmação...</p>
       <div class="modal-buttons" id="modal-buttons"></div>
@@ -2698,12 +2917,17 @@ const char painel_html[] PROGMEM = R"rawliteral(
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'state') {
-            document.getElementById('score-a').innerText = String(data.scoreA).padStart(2, '0');
-            document.getElementById('score-b').innerText = String(data.scoreB).padStart(2, '0');
-            document.getElementById('fouls-a').innerText = String(data.foulsA).padStart(2, '0');
-            document.getElementById('fouls-b').innerText = String(data.foulsB).padStart(2, '0');
-            document.getElementById('period').innerText = String(data.period).padStart(2, '0');
-            document.getElementById('timer-display').innerText = data.timer;
+            const setVal = (id, val) => {
+              const el = document.getElementById(id);
+              if (document.activeElement !== el) el.value = String(val).padStart(2, '0');
+            };
+            setVal('score-a', data.scoreA);
+            setVal('score-b', data.scoreB);
+            setVal('fouls-a', data.foulsA);
+            setVal('fouls-b', data.foulsB);
+            setVal('period', data.period);
+            const timerEl = document.getElementById('timer-display');
+            if (document.activeElement !== timerEl) timerEl.value = data.timer;
             
             // Sincronizar contador local caso ws desconecte depois
             const parts = data.timer.split(':');
@@ -2733,10 +2957,67 @@ const char painel_html[] PROGMEM = R"rawliteral(
       } else {
         // Fallback local se offline
         const el = document.getElementById(id);
-        let val = parseInt(el.innerText, 10) + amount;
+        let val = parseInt(el.value, 10) + amount;
+        if (isNaN(val)) val = 0;
         if (val < 0) val = 0;
         if (val > 99) val = 99;
-        el.innerText = String(val).padStart(2, '0');
+        el.value = String(val).padStart(2, '0');
+      }
+    }
+
+    function manualInputChanged(id) {
+      const el = document.getElementById(id);
+      let val = parseInt(el.value, 10);
+      if (isNaN(val)) val = 0;
+      if (val < 0) val = 0;
+      if (val > 99) val = 99;
+      el.value = String(val).padStart(2, '0');
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'set', target: id, value: val }));
+      }
+    }
+
+    function setPanelMode(mode) {
+      const isAuto = (mode === 'automatico');
+      fetch('/api/automation/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: mode })
+      }).catch(e => console.warn('Falha ao salvar modo', e));
+
+      document.querySelectorAll('.btn-controls').forEach(el => {
+        el.style.display = isAuto ? 'none' : 'flex';
+      });
+      document.querySelectorAll('.timer-actions button').forEach(btn => {
+        btn.disabled = isAuto;
+        btn.style.opacity = isAuto ? '0.5' : '1';
+        btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
+      });
+      document.querySelectorAll('input.led-text').forEach(input => {
+        if (isAuto) input.setAttribute('readonly', 'true');
+        else input.removeAttribute('readonly');
+      });
+
+      // Habilitar/Desabilitar timer input separadamente
+      const timerEl = document.getElementById('timer-display');
+      if (isAuto) timerEl.setAttribute('readonly', 'true');
+      else timerEl.removeAttribute('readonly');
+    }
+
+    function timerInputChanged() {
+      const el = document.getElementById('timer-display');
+      const raw = el.value.trim();
+      // Accept HH:MM:SS or MM:SS or raw seconds
+      const parts = raw.split(':').map(p => parseInt(p, 10) || 0);
+      let secs = 0;
+      if (parts.length === 3) secs = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      else if (parts.length === 2) secs = parts[0] * 60 + parts[1];
+      else secs = parts[0];
+      if (secs < 0) secs = 0;
+      totalSeconds = secs;
+      updateTimerDisplay();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'timer', command: 'set', value: totalSeconds }));
       }
     }
 
@@ -2745,7 +3026,10 @@ const char painel_html[] PROGMEM = R"rawliteral(
       const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
       const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const secs = String(totalSeconds % 60).padStart(2, '0');
-      document.getElementById('timer-display').innerText = `${hrs}:${mins}:${secs}`;
+      const el = document.getElementById('timer-display');
+      if (document.activeElement !== el) {
+        el.value = `${hrs}:${mins}:${secs}`;
+      }
     }
 
     function startTimerLocal() {
@@ -2838,16 +3122,16 @@ const char painel_html[] PROGMEM = R"rawliteral(
       overlay.classList.remove('active');
     }
 
-    function showAlert(title, message, iconClass = 'fa-solid fa-circle-info') {
-      modalIcon.innerHTML = `<i class="${iconClass}"></i>`;
+    function showAlert(title, message, iconClass = 'ℹ️') {
+      modalIcon.innerHTML = `<span style="font-size: 24px;">${iconClass}</span>`;
       modalTitle.innerText = title;
       modalMessage.innerText = message;
       modalButtons.innerHTML = `<button class="btn-modal btn-modal-ok" onclick="closeModal()">OK</button>`;
       overlay.classList.add('active');
     }
 
-    function showConfirm(title, message, onConfirm, iconClass = 'fa-solid fa-triangle-exclamation') {
-      modalIcon.innerHTML = `<i class="${iconClass}"></i>`;
+    function showConfirm(title, message, onConfirm, iconClass = '⚠️') {
+      modalIcon.innerHTML = `<span style="font-size: 24px;">${iconClass}</span>`;
       modalTitle.innerText = title;
       modalMessage.innerText = message;
       modalButtons.innerHTML = `
@@ -2871,952 +3155,256 @@ const char painel_html[] PROGMEM = R"rawliteral(
             ws.send(JSON.stringify({ action: 'reset_all' }));
           } else {
             // Fallback local
-            document.getElementById('score-a').innerText = '00';
-            document.getElementById('score-b').innerText = '00';
-            document.getElementById('fouls-a').innerText = '00';
-            document.getElementById('fouls-b').innerText = '00';
-            document.getElementById('period').innerText = '00';
+            document.getElementById('score-a').value = '00';
+            document.getElementById('score-b').value = '00';
+            document.getElementById('fouls-a').value = '00';
+            document.getElementById('fouls-b').value = '00';
+            document.getElementById('period').value = '00';
             resetTimerLocal();
           }
         }
       );
     }
 
+    function logout() {
+      fetch('/api/logout', { method: 'POST' })
+        .then(() => {
+          sessionStorage.removeItem('authenticated');
+          window.location.href = 'login.html';
+        }).catch(err => {
+          sessionStorage.removeItem('authenticated');
+          window.location.href = 'login.html';
+        });
+    }
+
+    function factoryReset() {
+      showConfirm(
+        'ATENÇÃO: Reset de Fábrica',
+        'Isso irá apagar todos os usuários, senhas e configurações. O ESP32 será reiniciado. Deseja continuar?',
+        () => {
+          fetch('/api/factory_reset', { method: 'POST' })
+            .then(() => {
+              showAlert('Reset de Fábrica', 'As configurações foram apagadas. O sistema está sendo reiniciado...', '⚠️');
+              setTimeout(() => { window.location.href = 'login.html'; }, 3000);
+            });
+        },
+        '⚠️'
+      );
+    }
+
     function openSettings() {
+      const role = sessionStorage.getItem('role') || 'Operador';
       showConfirm(
         'Configurações do Sistema',
         'Selecione a seção que deseja configurar no ESP32:',
         () => {},
-        'fa-solid fa-gear'
+        '⚙️'
       );
       const buttonsContainer = document.getElementById('modal-buttons');
-      buttonsContainer.innerHTML = `
-        <button class="btn-modal btn-modal-cancel" style="padding:10px 14px;" onclick="closeModal()">Cancelar</button>
-        <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#1b5e20;" onclick="window.location.href='lan_config.html'">Wi-Fi & Rede</button>
-        <button class="btn-modal btn-modal-confirm" style="padding:10px 14px; background:#0d47a1;" onclick="window.location.href='user_adm.html'">Usuários</button>
-        <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#8e24aa;" onclick="window.location.href='panel_config.html.html'">Automação API</button>
-      `;
+      buttonsContainer.style.flexWrap = 'wrap';
+      
+      if (role === 'Gerente') {
+        buttonsContainer.innerHTML = `
+          <button class="btn-modal btn-modal-cancel" style="padding:10px 14px;" onclick="closeModal()">Cancelar</button>
+          <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#8e24aa;" onclick="window.location.href='panel_config.html.html'">Automação API</button>
+        `;
+      } else {
+        buttonsContainer.innerHTML = `
+          <button class="btn-modal btn-modal-cancel" style="padding:10px 14px;" onclick="closeModal()">Cancelar</button>
+          <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#1b5e20;" onclick="window.location.href='lan_config.html'">Wi-Fi & Rede</button>
+          <button class="btn-modal btn-modal-confirm" style="padding:10px 14px; background:#0d47a1;" onclick="window.location.href='user_adm.html'">Usuários</button>
+          <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#8e24aa;" onclick="window.location.href='panel_config.html.html'">Automação API</button>
+          <button class="btn-modal btn-modal-confirm" style="padding:10px 14px; background:#b71c1c; flex: 1 1 100%; margin-top:5px;" onclick="factoryReset()">⚠️ Restaurar Padrões de Fábrica</button>
+        `;
+      }
     }
 
     // Inicialização
     connectWs();
+
+    // Obter modo salvo no ESP32
+    fetch('/api/automation/status')
+      .then(r => r.json())
+      .then(data => {
+        const mode = data.mode || 'automatico';
+        const radio = document.querySelector(`input[name="panelMode"][value="${mode}"]`);
+        if (radio) radio.checked = true;
+        setPanelMode(mode);
+      })
+      .catch(() => setPanelMode('automatico'));
+
+    const role = sessionStorage.getItem('role') || 'Operador';
+    if (role === 'Operador') {
+      const btnSettings = document.getElementById('btn-settings');
+      if (btnSettings) btnSettings.style.display = 'none';
+      const modeSel = document.querySelector('.mode-selector');
+      if (modeSel) modeSel.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
+)rawliteral";
+const char ssid_config_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuração de Wi-Fi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
+    body { background-color: #050505; color: #ffffff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .main-container { width: 100%; max-width: 500px; background-color: #0a0a0a; border-radius: 16px; padding: 30px; border: 2px solid #222; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; gap: 20px; }
+    .header-bar { border-bottom: 2px solid #222; padding-bottom: 15px; text-align: center; }
+    .header-title h1 { color: #fff; font-size: 1.5rem; }
+    .input-group { display: flex; flex-direction: column; gap: 8px; }
+    .input-group label { font-size: 0.85rem; font-weight: 600; color: #aaa; text-transform: uppercase; }
+    .input-wrapper { display: flex; gap: 10px; }
+    .input-field { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 1rem; outline: none; }
+    .input-field:focus { border-color: #ff1a1a; box-shadow: 0 0 8px rgba(255,26,26,0.3); }
+    .btn-inline { background: #333; border: none; color: #fff; padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .btn-inline:hover { background: #444; }
+    .btn-save { background: #2e7d32; color: #fff; padding: 14px; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
+    .btn-save:hover { background: #1b5e20; }
+    .nav-footer { text-align: center; margin-top: 10px; }
+    .nav-footer a { color: #888; text-decoration: none; font-size: 0.9rem; }
+    .nav-footer a:hover { color: #fff; }
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 500; z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <div class="header-bar">
+      <div class="header-title">
+        <h1>Configuração Rápida de Wi-Fi</h1>
+      </div>
+    </div>
+
+    <form id="wifiForm" onsubmit="saveWifi(event)">
+      <div class="input-group" style="margin-bottom: 15px;">
+        <label>Rede Wi-Fi (SSID)</label>
+        <div class="input-wrapper">
+          <select id="wifiSsid" class="input-field" required>
+            <option value="">Selecione uma rede...</option>
+          </select>
+          <button type="button" class="btn-inline" onclick="scanNetworks()">
+            <span id="iconScan">🔄</span> Escanear
+          </button>
+        </div>
+      </div>
+
+      <div class="input-group" style="margin-bottom: 25px;">
+        <label>Senha da Rede</label>
+        <input type="password" id="wifiPass" class="input-field" placeholder="Digite a senha do Wi-Fi">
+      </div>
+
+      <button type="submit" class="btn-save" style="width: 100%;">Salvar e Conectar</button>
+    </form>
+    
+    <div class="nav-footer">
+      <a href="painel.html">Voltar ao Painel</a>
+    </div>
+  </div>
+
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
+  <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+    let isScanPending = false;
+
+    function scanNetworks() {
+      if (isScanPending) return;
+      isScanPending = true;
+      const icon = document.getElementById('iconScan');
+      icon.innerHTML = '⏳';
+
+      fetch('/api/wifi/scan')
+      .then(r => r.json())
+      .then(networks => {
+        icon.innerHTML = '🔄';
+        isScanPending = false;
+        const select = document.getElementById('wifiSsid');
+        select.innerHTML = '';
+        if (networks.length === 0) {
+          select.innerHTML = '<option value="">Nenhuma rede encontrada</option>';
+        } else {
+          networks.forEach(net => {
+            const opt = document.createElement('option');
+            opt.value = net.ssid;
+            opt.innerText = `${net.ssid} (${net.rssi} dBm)`;
+            select.appendChild(opt);
+          });
+        }
+      })
+      .catch(err => {
+        icon.innerHTML = '🔄';
+        isScanPending = false;
+        showToast("Erro ao buscar redes. Verifique a conexão com o ESP32.", "error");
+      });
+    }
+
+    function saveWifi(e) {
+      e.preventDefault();
+      const ssid = document.getElementById('wifiSsid').value;
+      const pass = document.getElementById('wifiPass').value;
+      
+      if (!ssid) {
+        showToast("Selecione uma rede Wi-Fi.", "error");
+        return;
+      }
+
+      fetch('/api/wifi/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wifiSsid: ssid,
+          wifiPass: pass,
+          dhcp: true,
+          autoReconnect: true
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          showToast('Configurações de Wi-Fi salvas com sucesso! O ESP32 será reiniciado.', 'success');
+        } else {
+          showToast('Erro ao salvar as configurações.', 'error');
+        }
+      })
+      .catch(err => {
+        showToast("Erro ao salvar as configurações.", "error");
+      });
+    }
+
+    window.onload = scanNetworks;
   </script>
 </body>
 </html>
 )rawliteral";
 
-// ==========================================
-// Configurations and Global State Variables
-// ==========================================
-
-struct WifiConfig {
-  String wifiSsid;
-  String wifiPass;
-  bool dhcp;
-  String staticIp;
-  String staticSubnet;
-  String staticGateway;
-  String staticDns;
-  String apSsid;
-  String apPass;
-  int apChannel;
-  int httpPort;
-  int wsPort;
-  bool autoReconnect;
-};
-
-struct AutomationConfig {
-  bool active;
-  String dominio;
-  String modalidade;
-  String campeonato;
-  String partida;
-  String etapa;
-  String rodada;
-};
-
-WifiConfig wifiConfig;
-AutomationConfig automationConfig;
-Preferences preferences;
-
-// Dynamic servers
-WebServer* server = nullptr;
-WebSocketsServer* webSocket = nullptr;
-
-// Scoreboard metrics
-int scoreA = 0;
-int scoreB = 0;
-int foulsA = 0;
-int foulsB = 0;
-int period = 0;
-
-// Chronometer tracking
-bool timerRunning = false;
-unsigned long timerLastMillis = 0;
-unsigned long totalSeconds = 0;
-
-// Reconnection and reboot timers
-unsigned long lastReconnectMillis = 0;
-bool rebootScheduled = false;
-unsigned long rebootTime = 0;
-
-// Reset button tracking (GPIO 0)
-unsigned long resetBtnPressedMillis = 0;
-bool resetBtnPressed = false;
-
-// Automation polling tracking
-unsigned long lastPollMillis = 0;
-
-// ==========================================
-// NeoPixel 7-Segment Drivers
-// ==========================================
-
-// 16 digits, 35 pixels each (5 LEDs per segment)
-Adafruit_NeoPixel* digits[16] = {nullptr};
-const int digitPins[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-
-// Segment map for digits 0-9 (active high segment order: A, B, C, D, E, F, G)
-const byte segmentMap[10] = {
-  0b00111111, // 0: A, B, C, D, E, F
-  0b00000110, // 1: B, C
-  0b01011011, // 2: A, B, D, E, G
-  0b01001111, // 3: A, B, C, D, G
-  0b01100110, // 4: B, C, F, G
-  0b01101101, // 5: A, C, D, F, G
-  0b01111101, // 6: A, C, D, E, F, G
-  0b00000111, // 7: A, B, C
-  0b01111111, // 8: A, B, C, D, E, F, G
-  0b01101111  // 9: A, B, C, D, F, G
-};
-
-uint32_t getDigitColor(int index) {
-  // 0, 1: Points A (Red)
-  // 2, 3: Points B (Red)
-  // 4, 5: Fouls A (Orange)
-  // 6, 7: Period (Yellow)
-  // 8, 9: Fouls B (Orange)
-  // 10-15: Timer (Green)
-  if (index >= 0 && index <= 3) return 0xFF0000;
-  if (index >= 4 && index <= 5) return 0xFF5500;
-  if (index >= 6 && index <= 7) return 0xFFFF00;
-  if (index >= 8 && index <= 9) return 0xFF5500;
-  return 0x00FF00;
-}
-
-void drawDigit(int digitIndex, int val, uint32_t color) {
-  if (digitIndex < 0 || digitIndex >= 16 || digits[digitIndex] == nullptr) return;
-  Adafruit_NeoPixel* strip = digits[digitIndex];
-  strip->clear();
-  
-  if (val >= 0 && val <= 9) {
-    byte segments = segmentMap[val];
-    for (int seg = 0; seg < 7; seg++) {
-      bool lit = (segments >> seg) & 1;
-      if (lit) {
-        // segment has 5 LEDs
-        for (int led = 0; led < 5; led++) {
-          strip->setPixelColor(seg * 5 + led, color);
-        }
-      }
-    }
-  }
-  strip->show();
-}
-
-void updatePhysicalDisplays() {
-  // Scores
-  drawDigit(0, scoreA / 10, getDigitColor(0));
-  drawDigit(1, scoreA % 10, getDigitColor(1));
-  drawDigit(2, scoreB / 10, getDigitColor(2));
-  drawDigit(3, scoreB % 10, getDigitColor(3));
-  
-  // Fouls
-  drawDigit(4, foulsA / 10, getDigitColor(4));
-  drawDigit(5, foulsA % 10, getDigitColor(5));
-  drawDigit(8, foulsB / 10, getDigitColor(8));
-  drawDigit(9, foulsB % 10, getDigitColor(9));
-
-  // Period
-  drawDigit(6, period / 10, getDigitColor(6));
-  drawDigit(7, period % 10, getDigitColor(7));
-  
-  // Timer HH:MM:SS
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
-  int secs = totalSeconds % 60;
-  
-  drawDigit(10, hrs / 10, getDigitColor(10));
-  drawDigit(11, hrs % 10, getDigitColor(11));
-  drawDigit(12, mins / 10, getDigitColor(12));
-  drawDigit(13, mins % 10, getDigitColor(13));
-  drawDigit(14, secs / 10, getDigitColor(14));
-  drawDigit(15, secs % 10, getDigitColor(15));
-}
-
-// ==========================================
-// JSON State Sync Broadcast
-// ==========================================
-
-void sendSingleState(uint8_t num) {
-  if (webSocket == nullptr) return;
-  DynamicJsonDocument doc(256);
-  doc["type"] = "state";
-  doc["scoreA"] = scoreA;
-  doc["scoreB"] = scoreB;
-  doc["foulsA"] = foulsA;
-  doc["foulsB"] = foulsB;
-  doc["period"] = period;
-  
-  char timerStr[16];
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
-  int secs = totalSeconds % 60;
-  sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
-  doc["timer"] = timerStr;
-  
-  String response;
-  serializeJson(doc, response);
-  webSocket->sendTXT(num, response);
-}
-
-void broadcastState() {
-  if (webSocket == nullptr) return;
-  DynamicJsonDocument doc(256);
-  doc["type"] = "state";
-  doc["scoreA"] = scoreA;
-  doc["scoreB"] = scoreB;
-  doc["foulsA"] = foulsA;
-  doc["foulsB"] = foulsB;
-  doc["period"] = period;
-  
-  char timerStr[16];
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
-  int secs = totalSeconds % 60;
-  sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
-  doc["timer"] = timerStr;
-  
-  String response;
-  serializeJson(doc, response);
-  webSocket->broadcastTXT(response);
-}
-
-// ==========================================
-// REST Web Server Handlers
-// ==========================================
-
-void handleRoot() { server->send(200, "text/html", login_html); }
-void handleUserAdm() { server->send(200, "text/html", user_adm_html); }
-void handleLanConfig() { server->send(200, "text/html", lan_config_html); }
-void handlePanelConfig() { server->send(200, "text/html", panel_config_html); }
-void handlePainel() { server->send(200, "text/html", painel_html); }
-
-void handleLogin() {
-  if (!server->hasArg("plain")) {
-    server->send(400, "application/json", "{\"error\":\"body is required\"}");
-    return;
-  }
-  
-  String payload = server->arg("plain");
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    server->send(400, "application/json", "{\"error\":\"invalid json\"}");
-    return;
-  }
-  
-  const char* username = doc["username"] | "";
-  const char* password = doc["password"] | "";
-  
-  String usersJson = preferences.getString("users", "[]");
-  DynamicJsonDocument usersDoc(4096);
-  deserializeJson(usersDoc, usersJson);
-  JsonArray usersArr = usersDoc.as<JsonArray>();
-  
-  bool authenticated = false;
-  for (JsonObject user : usersArr) {
-    if (strcmp(user["username"], username) == 0 && strcmp(user["pass"], password) == 0) {
-      authenticated = true;
-      break;
-    }
-  }
-  
-  if (authenticated) {
-    server->send(200, "application/json", "{\"status\":\"success\"}");
-  } else {
-    server->send(401, "application/json", "{\"error\":\"unauthorized\"}");
-  }
-}
-
-void handleUsersGet() {
-  String usersJson = preferences.getString("users", "[]");
-  server->send(200, "application/json", usersJson);
-}
-
-void handleUsersSave() {
-  if (!server->hasArg("plain")) {
-    server->send(400, "application/json", "{\"error\":\"body is required\"}");
-    return;
-  }
-  
-  String payload = server->arg("plain");
-  DynamicJsonDocument doc(512);
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    server->send(400, "application/json", "{\"error\":\"invalid json\"}");
-    return;
-  }
-  
-  int index = doc["index"] | -1;
-  const char* name = doc["name"] | "";
-  const char* username = doc["username"] | "";
-  const char* password = doc["password"] | "";
-  const char* role = doc["role"] | "";
-  
-  String usersJson = preferences.getString("users", "[]");
-  DynamicJsonDocument usersDoc(4096);
-  deserializeJson(usersDoc, usersJson);
-  JsonArray usersArr = usersDoc.as<JsonArray>();
-  
-  if (index == -1) {
-    if (usersArr.size() >= 10) {
-      server->send(400, "application/json", "{\"error\":\"limit reached\"}");
-      return;
-    }
-    JsonObject newUser = usersArr.createNestedObject();
-    newUser["name"] = name;
-    newUser["username"] = username;
-    newUser["pass"] = password;
-    newUser["role"] = role;
-  } else {
-    if (index >= 0 && index < usersArr.size()) {
-      JsonObject user = usersArr[index];
-      user["name"] = name;
-      user["username"] = username;
-      if (strlen(password) > 0) {
-        user["pass"] = password;
-      }
-      user["role"] = role;
-    }
-  }
-  
-  String updatedJson;
-  serializeJson(usersArr, updatedJson);
-  preferences.putString("users", updatedJson);
-  
-  server->send(200, "application/json", updatedJson);
-}
-
-void handleUsersDelete() {
-  if (!server->hasArg("plain")) {
-    server->send(400, "application/json", "{\"error\":\"body is required\"}");
-    return;
-  }
-  
-  String payload = server->arg("plain");
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    server->send(400, "application/json", "{\"error\":\"invalid json\"}");
-    return;
-  }
-  
-  int index = doc["index"] | -1;
-  
-  String usersJson = preferences.getString("users", "[]");
-  DynamicJsonDocument usersDoc(4096);
-  deserializeJson(usersDoc, usersJson);
-  JsonArray usersArr = usersDoc.as<JsonArray>();
-  
-  if (index > 0 && index < usersArr.size()) {
-    usersArr.remove(index);
-  }
-  
-  String updatedJson;
-  serializeJson(usersArr, updatedJson);
-  preferences.putString("users", updatedJson);
-  
-  server->send(200, "application/json", updatedJson);
-}
-
-void handleWifiStatus() {
-  DynamicJsonDocument doc(1024);
-  
-  doc["ip"] = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-  doc["ssid"] = WiFi.status() == WL_CONNECTED ? WiFi.SSID() : wifiConfig.apSsid;
-  doc["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
-  
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
-  char macStr[18];
-  sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  doc["mac"] = macStr;
-  doc["mode"] = WiFi.status() == WL_CONNECTED ? "sta" : "ap";
-  
-  doc["wifiSsid"] = wifiConfig.wifiSsid;
-  doc["wifiPass"] = wifiConfig.wifiPass;
-  doc["dhcp"] = wifiConfig.dhcp;
-  doc["staticIp"] = wifiConfig.staticIp;
-  doc["staticSubnet"] = wifiConfig.staticSubnet;
-  doc["staticGateway"] = wifiConfig.staticGateway;
-  doc["staticDns"] = wifiConfig.staticDns;
-  doc["apSsid"] = wifiConfig.apSsid;
-  doc["apPass"] = wifiConfig.apPass;
-  doc["apChannel"] = wifiConfig.apChannel;
-  doc["httpPort"] = wifiConfig.httpPort;
-  doc["wsPort"] = wifiConfig.wsPort;
-  doc["autoReconnect"] = wifiConfig.autoReconnect;
-  
-  String response;
-  serializeJson(doc, response);
-  server->send(200, "application/json", response);
-}
-
-void handleWifiScan() {
-  int n = WiFi.scanNetworks();
-  DynamicJsonDocument doc(2048);
-  JsonArray array = doc.to<JsonArray>();
-  
-  for (int i = 0; i < n; ++i) {
-    JsonObject net = array.createNestedObject();
-    net["ssid"] = WiFi.SSID(i);
-    net["rssi"] = WiFi.RSSI(i);
-  }
-  
-  String response;
-  serializeJson(doc, response);
-  server->send(200, "application/json", response);
-  WiFi.scanDelete();
-}
-
-void handleWifiTest() {
-  server->send(200, "text/plain", "Conexão estável!");
-}
-
-void handleWifiConfig() {
-  if (!server->hasArg("plain")) {
-    server->send(400, "application/json", "{\"error\":\"body is required\"}");
-    return;
-  }
-  
-  String payload = server->arg("plain");
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    server->send(400, "application/json", "{\"error\":\"invalid json\"}");
-    return;
-  }
-  
-  preferences.putString("wifi", payload);
-  server->send(200, "application/json", "{\"status\":\"success\"}");
-  
-  rebootScheduled = true;
-  rebootTime = millis() + 2000;
-}
-
-void handleAutomationConfig() {
-  if (!server->hasArg("plain")) {
-    server->send(400, "application/json", "{\"error\":\"body is required\"}");
-    return;
-  }
-  
-  String payload = server->arg("plain");
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, payload);
-  if (error) {
-    server->send(400, "application/json", "{\"error\":\"invalid json\"}");
-    return;
-  }
-  
-  doc["active"] = true;
-  String configStr;
-  serializeJson(doc, configStr);
-  
-  preferences.putString("automation", configStr);
-  
-  // Reload local automation configs
-  automationConfig.active = true;
-  automationConfig.dominio = doc["dominio"] | "placar.inprolink.com.br";
-  automationConfig.modalidade = doc["modalidade"] | "";
-  automationConfig.campeonato = doc["campeonato"] | "";
-  automationConfig.partida = doc["partida"] | "";
-  automationConfig.etapa = doc["etapa"] | "";
-  automationConfig.rodada = doc["rodada"] | "";
-  
-  server->send(200, "application/json", "{\"status\":\"success\"}");
-}
-
-// Custom URL encoding helper to ensure compatibility across ESP32 core versions
-String urlEncode(String str) {
-  String encodedString = "";
-  char c;
-  char code0;
-  char code1;
-  for (int i = 0; i < str.length(); i++) {
-    c = str.charAt(i);
-    if (c == ' ') {
-      encodedString += '+';
-    } else if (isalnum(c)) {
-      encodedString += c;
-    } else {
-      code1 = (c & 0xf) + '0';
-      if ((c & 0xf) > 9) {
-        code1 = (c & 0xf) - 10 + 'A';
-      }
-      c = (c >> 4) & 0xf;
-      code0 = c + '0';
-      if (c > 9) {
-        code0 = c - 10 + 'A';
-      }
-      encodedString += '%';
-      encodedString += code0;
-      encodedString += code1;
-    }
-  }
-  return encodedString;
-}
-
-// Proxy Endpoint to Query External Domain from ESP32 to prevent CORS issues
-void handleProxy() {
-  String domain = server->arg("domain");
-  if (domain == "") {
-    server->send(400, "application/json", "{\"error\":\"domain is required\"}");
-    return;
-  }
-  
-  String uri = server->uri();
-  String targetPath = "";
-  if (uri.endsWith("modalidades")) {
-    targetPath = "/api/modalidades";
-  } else if (uri.endsWith("campeonatos")) {
-    targetPath = "/api/campeonatos?modalidade=" + urlEncode(server->arg("modalidade"));
-  } else if (uri.endsWith("partidas")) {
-    targetPath = "/api/partidas?campeonato=" + urlEncode(server->arg("campeonato"));
-  } else if (uri.endsWith("etapas")) {
-    targetPath = "/api/etapas?partida=" + urlEncode(server->arg("partida"));
-  } else if (uri.endsWith("rodadas")) {
-    targetPath = "/api/rodadas?etapa=" + urlEncode(server->arg("etapa"));
-  } else {
-    server->send(404, "application/json", "{\"error\":\"not found\"}");
-    return;
-  }
-  
-  WiFiClientSecure client;
-  client.setInsecure(); // Disable HTTPS certificate check for flexibility
-  
-  HTTPClient http;
-  String url = "https://" + domain + targetPath;
-  Serial.print("Proxy SSL GET: ");
-  Serial.println(url);
-  
-  http.begin(client, url);
-  int httpCode = http.GET();
-  
-  if (httpCode == HTTP_CODE_OK) {
-    server->send(200, "application/json", http.getString());
-  } else {
-    // Fallback to plain HTTP
-    http.end();
-    WiFiClient plainClient;
-    String plainUrl = "http://" + domain + targetPath;
-    Serial.print("Proxy HTTP GET fallback: ");
-    Serial.println(plainUrl);
-    http.begin(plainClient, plainUrl);
-    httpCode = http.GET();
-    if (httpCode == HTTP_CODE_OK) {
-      server->send(200, "application/json", http.getString());
-    } else {
-      server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy query failed\"}");
-    }
-  }
-  http.end();
-}
-
-// ==========================================
-// WebSocket Frame Event Handler
-// ==========================================
-
-void webSocketEvent(uint8_t num, WSType_t type, uint8_t * payload, size_t length) {
-  switch(type) {
-    case WSType_DISCONNECTED:
-      Serial.printf("[%u] WebSocket Disconnected!\n", num);
-      break;
-    case WSType_CONNECTED: {
-      IPAddress ip = webSocket->remoteIP(num);
-      Serial.printf("[%u] WebSocket Connection from: %s\n", num, ip.toString().c_str());
-      sendSingleState(num);
-      break;
-    }
-    case WSType_TEXT: {
-      Serial.printf("[%u] WS Command: %s\n", num, payload);
-      DynamicJsonDocument doc(256);
-      DeserializationError error = deserializeJson(doc, payload);
-      if (!error) {
-        // Automation is overridden by manual adjustments
-        if (automationConfig.active) {
-          automationConfig.active = false;
-          // Save inactive automation state to preferences
-          String autJson = preferences.getString("automation", "");
-          if (autJson != "") {
-            DynamicJsonDocument autDoc(512);
-            deserializeJson(autDoc, autJson);
-            autDoc["active"] = false;
-            String updatedAut;
-            serializeJson(autDoc, updatedAut);
-            preferences.putString("automation", updatedAut);
-          }
-        }
-        
-        const char* action = doc["action"];
-        if (strcmp(action, "change") == 0) {
-          const char* target = doc["target"];
-          int amount = doc["amount"] | 0;
-          if (strcmp(target, "score-a") == 0) {
-            scoreA = constrain(scoreA + amount, 0, 99);
-          } else if (strcmp(target, "score-b") == 0) {
-            scoreB = constrain(scoreB + amount, 0, 99);
-          } else if (strcmp(target, "fouls-a") == 0) {
-            foulsA = constrain(foulsA + amount, 0, 99);
-          } else if (strcmp(target, "fouls-b") == 0) {
-            foulsB = constrain(foulsB + amount, 0, 99);
-          } else if (strcmp(target, "period") == 0) {
-            period = constrain(period + amount, 0, 99);
-          }
-          updatePhysicalDisplays();
-          broadcastState();
-        } else if (strcmp(action, "timer") == 0) {
-          const char* command = doc["command"];
-          if (strcmp(command, "start") == 0) {
-            timerRunning = true;
-            timerLastMillis = millis();
-          } else if (strcmp(command, "pause") == 0) {
-            timerRunning = false;
-          } else if (strcmp(command, "reset") == 0) {
-            timerRunning = false;
-            totalSeconds = 0;
-          }
-          updatePhysicalDisplays();
-          broadcastState();
-        } else if (strcmp(action, "reset_all") == 0) {
-          scoreA = 0;
-          scoreB = 0;
-          foulsA = 0;
-          foulsB = 0;
-          period = 0;
-          timerRunning = false;
-          totalSeconds = 0;
-          updatePhysicalDisplays();
-          broadcastState();
-        }
-      }
-      break;
-    }
-    default:
-      break;
-  }
-}
-
-// ==========================================
-// External Automatic Polling Client
-// ==========================================
-
-void pollScoreboardAPI() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  
-  WiFiClientSecure client;
-  client.setInsecure();
-  
-  HTTPClient http;
-  String url = "https://" + automationConfig.dominio + "/api/placar";
-  url += "?modalidade=" + urlEncode(automationConfig.modalidade);
-  url += "&campeonato=" + urlEncode(automationConfig.campeonato);
-  url += "&partida=" + urlEncode(automationConfig.partida);
-  url += "&etapa=" + urlEncode(automationConfig.etapa);
-  url += "&rodada=" + urlEncode(automationConfig.rodada);
-  
-  Serial.print("Poller request (SSL): ");
-  Serial.println(url);
-  
-  http.begin(client, url);
-  int httpCode = http.GET();
-  
-  if (httpCode == HTTP_CODE_OK) {
-    String payload = http.getString();
-    DynamicJsonDocument doc(512);
-    DeserializationError error = deserializeJson(doc, payload);
-    if (!error) {
-      scoreA = doc["scoreA"] | 0;
-      scoreB = doc["scoreB"] | 0;
-      foulsA = doc["foulsA"] | 0;
-      foulsB = doc["foulsB"] | 0;
-      period = doc["period"] | 0;
-      const char* timerStr = doc["timer"] | "00:00:00";
-      
-      int h = 0, m = 0, s = 0;
-      sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
-      totalSeconds = h * 3600 + m * 60 + s;
-      
-      updatePhysicalDisplays();
-      broadcastState();
-    }
-  } else {
-    // Fallback to plain HTTP poller
-    http.end();
-    WiFiClient plainClient;
-    String plainUrl = "http://" + automationConfig.dominio + "/api/placar";
-    plainUrl += "?modalidade=" + urlEncode(automationConfig.modalidade);
-    plainUrl += "&campeonato=" + urlEncode(automationConfig.campeonato);
-    plainUrl += "&partida=" + urlEncode(automationConfig.partida);
-    plainUrl += "&etapa=" + urlEncode(automationConfig.etapa);
-    plainUrl += "&rodada=" + urlEncode(automationConfig.rodada);
-    
-    Serial.print("Poller request (HTTP fallback): ");
-    Serial.println(plainUrl);
-    
-    http.begin(plainClient, plainUrl);
-    httpCode = http.GET();
-    if (httpCode == HTTP_CODE_OK) {
-      String payload = http.getString();
-      DynamicJsonDocument doc(512);
-      DeserializationError error = deserializeJson(doc, payload);
-      if (!error) {
-        scoreA = doc["scoreA"] | 0;
-        scoreB = doc["scoreB"] | 0;
-        foulsA = doc["foulsA"] | 0;
-        foulsB = doc["foulsB"] | 0;
-        period = doc["period"] | 0;
-        const char* timerStr = doc["timer"] | "00:00:00";
-        
-        int h = 0, m = 0, s = 0;
-        sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
-        totalSeconds = h * 3600 + m * 60 + s;
-        
-        updatePhysicalDisplays();
-        broadcastState();
-      }
-    }
-  }
-  http.end();
-}
-
-// ==========================================
-// Setup and Loop Definitions
-// ==========================================
-
-void setup() {
-  Serial.begin(115200);
-  delay(100);
-  Serial.println("Iniciando Inprolink Scoreboard Controller...");
-  
-  // Factory reset button pin setup
-  pinMode(0, INPUT_PULLUP);
-  
-  // Load preferences from NVS
-  preferences.begin("scoreboard", false);
-  
-  // Initialize users NVS list if empty
-  String usersJson = preferences.getString("users", "");
-  if (usersJson == "") {
-    usersJson = "[{\"name\":\"Administrador Inprolink\",\"username\":\"inprolink\",\"pass\":\"link@link\",\"role\":\"Administrador\"}]";
-    preferences.putString("users", usersJson);
-  }
-  
-  // Load Wifi settings and automate configurations
-  String wifiJson = preferences.getString("wifi", "");
-  if (wifiJson == "") {
-    wifiConfig.wifiSsid = "";
-    wifiConfig.wifiPass = "";
-    wifiConfig.dhcp = true;
-    wifiConfig.staticIp = "192.168.1.200";
-    wifiConfig.staticSubnet = "255.255.255.0";
-    wifiConfig.staticGateway = "192.168.1.1";
-    wifiConfig.staticDns = "8.8.8.8";
-    wifiConfig.apSsid = "inprolink_system";
-    wifiConfig.apPass = "too@ajw8i67";
-    wifiConfig.apChannel = 6;
-    wifiConfig.httpPort = 80;
-    wifiConfig.wsPort = 81;
-    wifiConfig.autoReconnect = true;
-  } else {
-    DynamicJsonDocument doc(1024);
-    deserializeJson(doc, wifiJson);
-    wifiConfig.wifiSsid = doc["wifiSsid"] | "";
-    wifiConfig.wifiPass = doc["wifiPass"] | "";
-    wifiConfig.dhcp = doc["dhcp"] | true;
-    wifiConfig.staticIp = doc["staticIp"] | "192.168.1.200";
-    wifiConfig.staticSubnet = doc["staticSubnet"] | "255.255.255.0";
-    wifiConfig.staticGateway = doc["staticGateway"] | "192.168.1.1";
-    wifiConfig.staticDns = doc["staticDns"] | "8.8.8.8";
-    wifiConfig.apSsid = doc["apSsid"] | "inprolink_system";
-    wifiConfig.apPass = doc["apPass"] | "too@ajw8i67";
-    wifiConfig.apChannel = doc["apChannel"] | 6;
-    wifiConfig.httpPort = doc["httpPort"] | 80;
-    wifiConfig.wsPort = doc["wsPort"] | 81;
-    wifiConfig.autoReconnect = doc["autoReconnect"] | true;
-  }
-  
-  String autJson = preferences.getString("automation", "");
-  if (autJson == "") {
-    automationConfig.active = false;
-    automationConfig.dominio = "placar.inprolink.com.br";
-    automationConfig.modalidade = "";
-    automationConfig.campeonato = "";
-    automationConfig.partida = "";
-    automationConfig.etapa = "";
-    automationConfig.rodada = "";
-  } else {
-    DynamicJsonDocument doc(1024);
-    deserializeJson(doc, autJson);
-    automationConfig.active = doc["active"] | false;
-    automationConfig.dominio = doc["dominio"] | "placar.inprolink.com.br";
-    automationConfig.modalidade = doc["modalidade"] | "";
-    automationConfig.campeonato = doc["campeonato"] | "";
-    automationConfig.partida = doc["partida"] | "";
-    automationConfig.etapa = doc["etapa"] | "";
-    automationConfig.rodada = doc["rodada"] | "";
-  }
-  
-  // Initialize WS2812B NeoPixel strips for the 16 digits
-  for (int i = 0; i < 16; i++) {
-    digits[i] = new Adafruit_NeoPixel(35, digitPins[i], NEO_GRB + NEO_KHZ800);
-    digits[i]->begin();
-    digits[i]->setBrightness(50);
-    digits[i]->show();
-  }
-  updatePhysicalDisplays();
-  
-  // Establish WiFi access point and station mode connections
-  WiFi.disconnect(true);
-  delay(100);
-  WiFi.softAPConfig(IPAddress(192.168.4.1), IPAddress(192.168.4.1), IPAddress(255.255.255.0));
-  WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
-  
-  if (wifiConfig.wifiSsid.length() > 0) {
-    WiFi.mode(WIFI_AP_STA);
-    if (!wifiConfig.dhcp) {
-      IPAddress ip, subnet, gateway, dns;
-      ip.fromString(wifiConfig.staticIp);
-      subnet.fromString(wifiConfig.staticSubnet);
-      gateway.fromString(wifiConfig.staticGateway);
-      dns.fromString(wifiConfig.staticDns);
-      WiFi.config(ip, gateway, subnet, dns);
-    }
-    WiFi.begin(wifiConfig.wifiSsid.c_str(), wifiConfig.wifiPass.c_str());
-    Serial.println("Wi-Fi STA iniciando conexão...");
-  } else {
-    WiFi.mode(WIFI_AP);
-    Serial.println("Wi-Fi operando somente em modo AP.");
-  }
-  
-  // Initialize local mDNS Responder
-  if (MDNS.begin("inprolink_system")) {
-    Serial.println("mDNS ativo: http://inprolink_system.local");
-  }
-  
-  // Start Web Server on custom HTTP port
-  server = new WebServer(wifiConfig.httpPort);
-  
-  server->on("/", handleRoot);
-  server->on("/login.html", handleRoot);
-  server->on("/user_adm.html", handleUserAdm);
-  server->on("/lan_config.html", handleLanConfig);
-  server->on("/panel_config.html.html", handlePanelConfig);
-  server->on("/panel_config.html", handlePanelConfig);
-  server->on("/painel.html", handlePainel);
-  
-  server->on("/api/login", HTTP_POST, handleLogin);
-  server->on("/api/users", HTTP_GET, handleUsersGet);
-  server->on("/api/users", HTTP_POST, handleUsersSave);
-  server->on("/api/users/delete", HTTP_POST, handleUsersDelete);
-  
-  server->on("/api/wifi/status", HTTP_GET, handleWifiStatus);
-  server->on("/api/wifi/scan", HTTP_GET, handleWifiScan);
-  server->on("/api/wifi/test", HTTP_GET, handleWifiTest);
-  server->on("/api/wifi/config", HTTP_POST, handleWifiConfig);
-  
-  server->on("/api/automation/config", HTTP_POST, handleAutomationConfig);
-  
-  server->on("/api/proxy/modalidades", HTTP_GET, handleProxy);
-  server->on("/api/proxy/campeonatos", HTTP_GET, handleProxy);
-  server->on("/api/proxy/partidas", HTTP_GET, handleProxy);
-  server->on("/api/proxy/etapas", HTTP_GET, handleProxy);
-  server->on("/api/proxy/rodadas", HTTP_GET, handleProxy);
-  
-  server->begin();
-  Serial.printf("Servidor HTTP iniciado na porta %d\n", wifiConfig.httpPort);
-  
-  // Start WebSocket server on custom port
-  webSocket = new WebSocketsServer(wifiConfig.wsPort);
-  webSocket->begin();
-  webSocket->onEvent(webSocketEvent);
-  Serial.printf("WebSocket iniciado na porta %d\n", wifiConfig.wsPort);
-}
-
-void loop() {
-  // Feed web servers
-  if (server != nullptr) server->handleClient();
-  if (webSocket != nullptr) webSocket->loop();
-  
-  // Keep chronometer accurate
-  if (timerRunning) {
-    unsigned long now = millis();
-    if (now - timerLastMillis >= 1000) {
-      unsigned long elapsedSecs = (now - timerLastMillis) / 1000;
-      totalSeconds += elapsedSecs;
-      timerLastMillis += elapsedSecs * 1000;
-      
-      updatePhysicalDisplays();
-      broadcastState();
-    }
-  }
-  
-  // Handle Wi-Fi automatic reconnection in STA mode
-  if (wifiConfig.wifiSsid.length() > 0 && WiFi.status() != WL_CONNECTED && wifiConfig.autoReconnect) {
-    unsigned long now = millis();
-    if (now - lastReconnectMillis >= 15000) { // Try every 15 seconds
-      lastReconnectMillis = now;
-      Serial.println("Reconexão Wi-Fi automática em andamento...");
-      WiFi.begin(wifiConfig.wifiSsid.c_str(), wifiConfig.wifiPass.c_str());
-    }
-  }
-  
-  // Factory reset button handler (hold BOOT pin for 5 seconds)
-  if (digitalRead(0) == LOW) {
-    if (!resetBtnPressed) {
-      resetBtnPressed = true;
-      resetBtnPressedMillis = millis();
-    } else {
-      if (millis() - resetBtnPressedMillis >= 5000) {
-        Serial.println("Factory Reset físico acionado! Limpando NVS...");
-        preferences.clear();
-        
-        // Clear all NeoPixel strips to indicate success
-        for (int i = 0; i < 16; i++) {
-          if (digits[i] != nullptr) {
-            digits[i]->clear();
-            digits[i]->show();
-          }
-        }
-        delay(1000);
-        ESP.restart();
-      }
-    }
-  } else {
-    resetBtnPressed = false;
-  }
-  
-  // Automatic API Polling Client (every 3 seconds if active)
-  if (automationConfig.active && WiFi.status() == WL_CONNECTED) {
-    unsigned long now = millis();
-    if (now - lastPollMillis >= 3000) {
-      lastPollMillis = now;
-      pollScoreboardAPI();
-    }
-  }
-  
-  // Delayed reboot handler
-  if (rebootScheduled && millis() >= rebootTime) {
-    Serial.println("Reiniciando ESP32...");
-    ESP.restart();
-  }
-}
+#endif // WEB_PAGES_H

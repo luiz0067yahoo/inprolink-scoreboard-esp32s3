@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuração de Wi-Fi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
+    body { background-color: #050505; color: #ffffff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .main-container { width: 100%; max-width: 500px; background-color: #0a0a0a; border-radius: 16px; padding: 30px; border: 2px solid #222; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; gap: 20px; }
+    .header-bar { border-bottom: 2px solid #222; padding-bottom: 15px; text-align: center; }
+    .header-title h1 { color: #fff; font-size: 1.5rem; }
+    .input-group { display: flex; flex-direction: column; gap: 8px; }
+    .input-group label { font-size: 0.85rem; font-weight: 600; color: #aaa; text-transform: uppercase; }
+    .input-wrapper { display: flex; gap: 10px; }
+    .input-field { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 1rem; outline: none; }
+    .input-field:focus { border-color: #ff1a1a; box-shadow: 0 0 8px rgba(255,26,26,0.3); }
+    .btn-inline { background: #333; border: none; color: #fff; padding: 0 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .btn-inline:hover { background: #444; }
+    .btn-save { background: #2e7d32; color: #fff; padding: 14px; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
+    .btn-save:hover { background: #1b5e20; }
+    .nav-footer { text-align: center; margin-top: 10px; }
+    .nav-footer a { color: #888; text-decoration: none; font-size: 0.9rem; }
+    .nav-footer a:hover { color: #fff; }
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 500; z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <div class="header-bar">
+      <div class="header-title">
+        <h1>Configuração Rápida de Wi-Fi</h1>
+      </div>
+    </div>
+
+    <form id="wifiForm" onsubmit="saveWifi(event)">
+      <div class="input-group" style="margin-bottom: 15px;">
+        <label>Rede Wi-Fi (SSID)</label>
+        <div class="input-wrapper">
+          <select id="wifiSsid" class="input-field" required>
+            <option value="">Selecione uma rede...</option>
+          </select>
+          <button type="button" class="btn-inline" onclick="scanNetworks()">
+            <span id="iconScan">🔄</span> Escanear
+          </button>
+        </div>
+      </div>
+
+      <div class="input-group" style="margin-bottom: 25px;">
+        <label>Senha da Rede</label>
+        <input type="password" id="wifiPass" class="input-field" placeholder="Digite a senha do Wi-Fi">
+      </div>
+
+      <button type="submit" class="btn-save" style="width: 100%;">Salvar e Conectar</button>
+    </form>
+    
+    <div class="nav-footer">
+      <a href="painel.html">Voltar ao Painel</a>
+    </div>
+  </div>
+
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
+  <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+    let isScanPending = false;
+
+    function scanNetworks() {
+      if (isScanPending) return;
+      isScanPending = true;
+      const icon = document.getElementById('iconScan');
+      icon.innerHTML = '⏳';
+
+      fetch('/api/wifi/scan')
+      .then(r => r.json())
+      .then(networks => {
+        icon.innerHTML = '🔄';
+        isScanPending = false;
+        const select = document.getElementById('wifiSsid');
+        select.innerHTML = '';
+        if (networks.length === 0) {
+          select.innerHTML = '<option value="">Nenhuma rede encontrada</option>';
+        } else {
+          networks.forEach(net => {
+            const opt = document.createElement('option');
+            opt.value = net.ssid;
+            opt.innerText = `${net.ssid} (${net.rssi} dBm)`;
+            select.appendChild(opt);
+          });
+        }
+      })
+      .catch(err => {
+        icon.innerHTML = '🔄';
+        isScanPending = false;
+        showToast("Erro ao buscar redes. Verifique a conexão com o ESP32.", "error");
+      });
+    }
+
+    function saveWifi(e) {
+      e.preventDefault();
+      const ssid = document.getElementById('wifiSsid').value;
+      const pass = document.getElementById('wifiPass').value;
+      
+      if (!ssid) {
+        showToast("Selecione uma rede Wi-Fi.", "error");
+        return;
+      }
+
+      fetch('/api/wifi/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wifiSsid: ssid,
+          wifiPass: pass,
+          dhcp: true,
+          autoReconnect: true
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          showToast('Configurações de Wi-Fi salvas com sucesso! O ESP32 será reiniciado.', 'success');
+        } else {
+          showToast('Erro ao salvar as configurações.', 'error');
+        }
+      })
+      .catch(err => {
+        showToast("Erro ao salvar as configurações.", "error");
+      });
+    }
+
+    window.onload = scanNetworks;
+  </script>
+</body>
+</html>

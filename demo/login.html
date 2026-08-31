@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login Administrador - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * {
       box-sizing: border-box;
@@ -221,7 +219,7 @@
       <div class="input-group">
         <label class="input-label" for="username">Usuário</label>
         <div class="input-wrapper">
-          <i class="fa-solid fa-user"></i>
+          👤
           <input type="text" id="username" class="input-field" placeholder="Digite o usuário" required autocomplete="off">
         </div>
       </div>
@@ -229,21 +227,21 @@
       <div class="input-group">
         <label class="input-label" for="password">Senha</label>
         <div class="input-wrapper">
-          <i class="fa-solid fa-lock"></i>
+          🔒
           <input type="password" id="password" class="input-field" placeholder="Digite a senha" required>
         </div>
       </div>
 
       <div class="credentials-box">
-        <i class="fa-solid fa-circle-info"></i> <strong>Acesso Padrão:</strong><br>
+        ℹ️ <strong>Acesso Padrão:</strong><br>
       </div>
 
       <div class="error-msg" id="errorMsg">
-        <i class="fa-solid fa-triangle-exclamation"></i> Usuário ou senha incorretos!
+        ⚠️ Usuário ou senha incorretos!
       </div>
 
       <button type="submit" class="btn-login">
-        Entrar <i class="fa-solid fa-right-to-bracket"></i>
+        Entrar 🚪
       </button>
     </form>
   </div>
@@ -263,18 +261,22 @@
       })
       .then(response => {
         if (response.ok) {
-          sessionStorage.setItem('authenticated', 'true');
-          window.location.href = 'painel.html';
+          return response.json();
         } else {
-          errorMsg.classList.add('active');
+          throw new Error('Unauthorized');
         }
+      })
+      .then(data => {
+        sessionStorage.setItem('authenticated', 'true');
+        sessionStorage.setItem('role', data.role || 'Operador');
+        window.location.href = 'painel.html';
       })
       .catch(error => {
         console.warn('API offline. Tentando login local fallback...', error);
-        // Fallback local se estiver abrindo o arquivo estático diretamente
         if (userVal === 'inprolink' && passVal === 'link@link') {
           errorMsg.classList.remove('active');
           sessionStorage.setItem('authenticated', 'true');
+          sessionStorage.setItem('role', 'Administrador');
           window.location.href = 'painel.html';
         } else {
           errorMsg.classList.add('active');

@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Configuração de Rede - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * {
       box-sizing: border-box;
@@ -305,6 +303,29 @@
       flex-wrap: wrap;
     }
 
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: 500;
+      z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+
     .btn-nav {
       padding: 12px 20px;
       border-radius: 8px;
@@ -344,7 +365,7 @@
     <!-- Top Header -->
     <div class="header-bar">
       <div class="header-title">
-        <i class="fa-solid fa-wifi"></i>
+        🛜
         <h1>Configuração de Rede</h1>
       </div>
       <div class="badge-status">
@@ -375,20 +396,20 @@
     <!-- Mode Selector Tabs -->
     <div class="tab-selector">
       <button class="tab-btn active" onclick="selectMode('sta')">
-        <i class="fa-solid fa-house-wifi"></i> Wi-Fi Estação (STA)
+        🏠📶 Wi-Fi Estação (STA)
       </button>
       <button class="tab-btn" onclick="selectMode('ap')">
-        <i class="fa-solid fa-tower-cell"></i> Ponto de Acesso (AP)
+        📡 Ponto de Acesso (AP)
       </button>
       <button class="tab-btn" onclick="selectMode('ports')">
-        <i class="fa-solid fa-network-wired"></i> Portas & Serviços
+        🔌 Portas & Serviços
       </button>
     </div>
 
     <!-- Form Section: STA Mode -->
     <div class="section-card" id="section-sta">
       <div class="card-title">
-        <i class="fa-solid fa-signal"></i> Conexão Wi-Fi Local
+        📶 Conexão Wi-Fi Local
       </div>
 
       <div class="input-group">
@@ -400,7 +421,7 @@
             <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
           </select>
           <button type="button" class="btn-inline" onclick="scanNetworks()">
-            <i class="fa-solid fa-arrows-rotate" id="iconScan"></i> Escanear
+            <span id="iconScan">🔄</span> Escanear
           </button>
         </div>
       </div>
@@ -450,7 +471,7 @@
     <!-- Form Section: AP Mode -->
     <div class="section-card" id="section-ap" style="display: none;">
       <div class="card-title">
-        <i class="fa-solid fa-wifi"></i> Ponto de Acesso Local (ESP32 Hotspot)
+        🛜 Ponto de Acesso Local (ESP32 Hotspot)
       </div>
 
       <div class="input-group">
@@ -482,7 +503,7 @@
     <!-- Form Section: Ports & Services -->
     <div class="section-card" id="section-ports" style="display: none;">
       <div class="card-title">
-        <i class="fa-solid fa-plug"></i> Configuração de Serviços & Portas
+        🔌 Configuração de Serviços & Portas
       </div>
 
       <div class="grid-2col">
@@ -510,19 +531,35 @@
 
     <!-- Footer Bar -->
     <div class="footer-bar">
-      <a href="painel.html" class="btn-nav btn-back"><i class="fa-solid fa-arrow-left"></i> Painel</a>
+      <a href="painel.html" class="btn-nav btn-back">⬅️ Painel</a>
       <div style="display: flex; gap: 10px;">
         <button type="button" class="btn-nav btn-test" onclick="testConnection()">
-          <i class="fa-solid fa-vial"></i> Testar
+          🧪 Testar
         </button>
         <button type="button" class="btn-nav btn-save" onclick="saveSettings()">
-          <i class="fa-solid fa-floppy-disk"></i> Salvar & Reiniciar
+          💾 Salvar & Reiniciar
         </button>
       </div>
     </div>
   </div>
 
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
   <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
     if (sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
@@ -636,7 +673,7 @@
             select.appendChild(opt);
           });
         }
-        alert(`Busca concluída! ${networks.length} redes encontradas.`);
+        showToast(`Busca concluída! ${networks.length} redes encontradas.`, 'success');
       })
       .catch(err => {
         icon.classList.remove('fa-spin');
@@ -649,7 +686,7 @@
           <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
           <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
         `;
-        alert('Busca concluída! 3 redes simuladas.');
+        showToast('Busca concluída! 3 redes simuladas.', 'success');
       });
     }
 
@@ -657,11 +694,11 @@
       fetch('/api/wifi/test')
       .then(r => r.text())
       .then(txt => {
-        alert(txt);
+        showToast(txt, 'success');
       })
       .catch(err => {
         console.warn('API offline.', err);
-        alert('Enviando pacote de teste ao ESP32... Conexão estável! (Simulado)');
+        showToast('Enviando pacote de teste ao ESP32... Conexão estável! (Simulado)', 'success');
       });
     }
 
@@ -689,7 +726,7 @@
       })
       .then(response => {
         if (!response.ok) throw new Error('Erro ao salvar configurações');
-        alert('Configurações salvas no ESP32! O dispositivo será reiniciado.');
+        showToast('Configurações salvas no ESP32! O dispositivo será reiniciado.', 'success');
       })
       .catch(error => {
         console.warn('API offline, simulando salvamento...', error);
@@ -700,7 +737,7 @@
           apSsid: config.apSsid,
           wsPort: config.wsPort
         }));
-        alert('Configurações salvas no localStorage (Simulado)!');
+        showToast('Configurações salvas no localStorage (Simulado)!', 'success');
       });
     }
 

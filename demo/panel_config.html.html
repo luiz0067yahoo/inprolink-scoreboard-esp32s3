@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wizard de Configuração Geral - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * {
       box-sizing: border-box;
@@ -267,6 +265,18 @@
     .btn-next { background: linear-gradient(180deg, #1565c0, #0d47a1); }
     .btn-finish { background: linear-gradient(180deg, #2e7d32, #1b5e20); display: none; }
     .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 500; z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
   </style>
 </head>
 <body>
@@ -275,14 +285,28 @@
     <!-- Header -->
     <div class="header-bar">
       <div class="header-title">
-        <i class="fa-solid fa-sliders"></i>
+        🎚️
         <h1>Configuração do Placar</h1>
       </div>
-      <div class="wizard-status" id="step-status-text">Passo 1 de 6</div>
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <div class="wizard-status" id="step-status-text">Passo 1 de 6</div>
+        <button class="btn-action" style="background: #e53935; padding: 6px 12px; font-size: 14px; border-radius: 6px;" onclick="window.location.href='painel.html'">❌ Fechar</button>
+      </div>
+    </div>
+
+    <!-- Mode Selection -->
+    <div class="mode-selector" style="text-align: center; margin-bottom: 20px;">
+      <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="automatico" checked onchange="toggleMode()"> 🤖 Automático (Via API)
+      </label>
+      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="manual" onchange="toggleMode()"> ✍️ Manual (Local)
+      </label>
     </div>
 
     <!-- Stepper Navigation Header -->
-    <div class="stepper-bar">
+    <div id="wizard-container">
+      <div class="stepper-bar">
       <div class="step-indicator active" id="ind-1">
         <div class="step-circle">1</div>
         <span class="step-label">Domínio</span>
@@ -312,7 +336,7 @@
     <!-- Step 1: Domínio -->
     <div class="step-content active" id="step-1">
       <div class="card-title">
-        <i class="fa-solid fa-globe"></i> Informar Domínio do Sistema
+        🌐 Informar Domínio do Sistema
       </div>
       <div class="input-group">
         <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
@@ -323,23 +347,23 @@
     <!-- Step 2: Modalidade -->
     <div class="step-content" id="step-2">
       <div class="card-title">
-        <i class="fa-solid fa-trophy"></i> Selecionar Modalidade
+        🏆 Selecionar Modalidade
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('modalidade', 'Futebol', this)">
-          <i class="fa-solid fa-futbol"></i>
+          ⚽
           <span>Futebol</span>
         </div>
         <div class="option-card" onclick="selectCard('modalidade', 'Vôlei', this)">
-          <i class="fa-solid fa-volleyball"></i>
+          🏐
           <span>Vôlei</span>
         </div>
         <div class="option-card" onclick="selectCard('modalidade', 'Natação', this)">
-          <i class="fa-solid fa-person-swimming"></i>
+          🏊
           <span>Natação</span>
         </div>
         <div class="option-card" onclick="selectCard('modalidade', 'Corrida', this)">
-          <i class="fa-solid fa-person-running"></i>
+          🏃
           <span>Corrida</span>
         </div>
       </div>
@@ -348,15 +372,15 @@
     <!-- Step 3: Campeonato -->
     <div class="step-content" id="step-3">
       <div class="card-title">
-        <i class="fa-solid fa-award"></i> Selecionar Campeonato
+        🏅 Selecionar Campeonato
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('campeonato', 'Campeonato 1', this)">
-          <i class="fa-solid fa-medal"></i>
+          🥇
           <span>Campeonato 1</span>
         </div>
         <div class="option-card" onclick="selectCard('campeonato', 'Campeonato 2', this)">
-          <i class="fa-solid fa-medal"></i>
+          🥇
           <span>Campeonato 2</span>
         </div>
       </div>
@@ -365,15 +389,15 @@
     <!-- Step 4: Partida -->
     <div class="step-content" id="step-4">
       <div class="card-title">
-        <i class="fa-solid fa-gamepad"></i> Selecionar Partida
+        🎮 Selecionar Partida
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('partida', 'Partida 1', this)">
-          <i class="fa-solid fa-flag-checkered"></i>
+          🏁
           <span>Partida 1</span>
         </div>
         <div class="option-card" onclick="selectCard('partida', 'Partida 2', this)">
-          <i class="fa-solid fa-flag-checkered"></i>
+          🏁
           <span>Partida 2</span>
         </div>
       </div>
@@ -382,15 +406,15 @@
     <!-- Step 5: Etapa -->
     <div class="step-content" id="step-5">
       <div class="card-title">
-        <i class="fa-solid fa-layer-group"></i> Selecionar Etapa
+        🗂️ Selecionar Etapa
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('etapa', 'Etapa 1', this)">
-          <i class="fa-solid fa-sitemap"></i>
+          🗃️
           <span>Etapa 1</span>
         </div>
         <div class="option-card" onclick="selectCard('etapa', 'Etapa 2', this)">
-          <i class="fa-solid fa-sitemap"></i>
+          🗃️
           <span>Etapa 2</span>
         </div>
       </div>
@@ -399,15 +423,15 @@
     <!-- Step 6: Rodada -->
     <div class="step-content" id="step-6">
       <div class="card-title">
-        <i class="fa-solid fa-calendar-days"></i> Selecionar Rodada
+        📅 Selecionar Rodada
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('rodada', 'Rodada 1', this)">
-          <i class="fa-solid fa-list-ol"></i>
+          🔢
           <span>Rodada 1</span>
         </div>
         <div class="option-card" onclick="selectCard('rodada', 'Rodada 2', this)">
-          <i class="fa-solid fa-list-ol"></i>
+          🔢
           <span>Rodada 2</span>
         </div>
       </div>
@@ -416,27 +440,100 @@
     <!-- Footer Controls -->
     <div class="footer-bar">
       <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
-        <i class="fa-solid fa-chevron-left"></i> Anterior
+        ◀️ Anterior
       </button>
 
       <div style="display: flex; gap: 10px;">
         <button class="btn-action btn-next" id="btnNext" onclick="changeStep(1)">
-          Próximo <i class="fa-solid fa-chevron-right"></i>
+          Próximo ▶️
         </button>
         <button class="btn-action btn-finish" id="btnFinish" onclick="finishWizard()">
-          <i class="fa-solid fa-check"></i> Concluir
+          ✅ Concluir
         </button>
       </div>
     </div>
+    </div> <!-- End wizard-container -->
+
+    <!-- Container do Manual -->
+    <div id="manual-container" style="display: none; padding: 20px; background: #1a1a1a; border-radius: 12px; margin-top: 15px;">
+      <div class="card-title" style="margin-bottom: 20px; text-align: center;">✍️ Configuração Manual do Placar</div>
+      
+      <div class="input-group">
+        <label>Endereço do Domínio / IP (Opcional)</label>
+        <input type="text" id="manual_dominio" class="input-field" value="placar.inprolink.com.br">
+      </div>
+      <div class="input-group">
+        <label>Modalidade</label>
+        <input type="text" id="manual_modalidade" class="input-field" placeholder="Ex: Futebol">
+      </div>
+      <div class="input-group">
+        <label>Campeonato</label>
+        <input type="text" id="manual_campeonato" class="input-field" placeholder="Ex: Campeonato Regional">
+      </div>
+      <div class="input-group">
+        <label>Partida</label>
+        <input type="text" id="manual_partida" class="input-field" placeholder="Ex: Final">
+      </div>
+      <div class="input-group">
+        <label>Etapa</label>
+        <input type="text" id="manual_etapa" class="input-field" placeholder="Ex: 1º Tempo">
+      </div>
+      <div class="input-group">
+        <label>Rodada</label>
+        <input type="text" id="manual_rodada" class="input-field" placeholder="Ex: Rodada 10">
+      </div>
+
+      <button class="btn-action btn-finish" style="width: 100%; margin-top: 20px; justify-content: center;" onclick="saveManualConfig()">
+        ✅ Salvar Configuração Manual
+      </button>
+    </div>
+
+  </div>
+
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
   </div>
 
   <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
     if (sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
 
     let currentStep = 1;
     const totalSteps = 6;
+    let currentMode = 'automatico';
+
+    function toggleMode() {
+      const mode = document.querySelector('input[name="automationMode"]:checked').value;
+      currentMode = mode;
+      
+      wizardData.mode = mode;
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wizardData)
+      }).catch(e => console.log(e));
+
+      if (mode === 'automatico') {
+        document.getElementById('wizard-container').style.display = 'block';
+        document.getElementById('manual-container').style.display = 'none';
+      } else {
+        document.getElementById('wizard-container').style.display = 'none';
+        document.getElementById('manual-container').style.display = 'block';
+      }
+    }
 
     // Estado da seleção do Wizard
     const wizardData = {
@@ -456,7 +553,7 @@
       el.classList.add('selected');
     }
 
-    function populateStepOptions(stepId, field, items, iconClass = 'fa-solid fa-circle') {
+    function populateStepOptions(stepId, field, items, iconClass = '⚪') {
       const stepEl = document.getElementById(stepId);
       const grid = stepEl.querySelector('.options-grid');
       grid.innerHTML = '';
@@ -477,16 +574,16 @@
         let displayIcon = iconClass;
         if (field === 'modalidade') {
           const lowerName = item.nome.toLowerCase();
-          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = 'fa-solid fa-futbol';
-          else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = 'fa-solid fa-volleyball';
-          else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = 'fa-solid fa-person-swimming';
-          else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = 'fa-solid fa-person-running';
-          else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = 'fa-solid fa-basketball';
+          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = '⚽';
+          else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = '🏐';
+          else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = '🏊';
+          else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = '🏃';
+          else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = '🏀';
         }
         
         card.onclick = () => selectCard(field, item.id, card);
         card.innerHTML = `
-          <i class="${displayIcon}"></i>
+          <span style="font-size: 24px;">${displayIcon}</span>
           <span>${item.nome}</span>
         `;
         grid.appendChild(card);
@@ -607,7 +704,7 @@
       if (delta > 0) {
         const domain = document.getElementById('domainInput').value.trim();
         if (!domain) {
-          alert('Por favor, informe o domínio.');
+          showToast('Por favor, informe o domínio.', 'error');
           return;
         }
         wizardData.dominio = domain;
@@ -665,6 +762,7 @@
     }
 
     function finishWizard() {
+      wizardData.mode = "automatico";
       fetch('/api/automation/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -672,14 +770,40 @@
       })
       .then(r => {
         if (!r.ok) throw new Error('Erro ao salvar automação');
-        alert('Configuração de automação salva com sucesso no ESP32!');
+        showToast('Configuração de automação salva com sucesso no ESP32!', 'success');
         window.location.href = 'painel.html';
       })
       .catch(err => {
         console.warn('API offline, salvando localmente...', err);
         localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
-        alert(`Configuração concluída (Simulado)!\n\nDomínio: ${wizardData.dominio}\nModalidade: ${wizardData.modalidade}\nCampeonato: ${wizardData.campeonato}\nPartida: ${wizardData.partida}\nEtapa: ${wizardData.etapa}\nRodada: ${wizardData.rodada}`);
+        showToast('Configuração concluída (Simulado)!', 'success');
         window.location.href = 'painel.html';
+      });
+    }
+
+    function saveManualConfig() {
+      const data = {
+        mode: "manual",
+        dominio: document.getElementById('manual_dominio').value.trim(),
+        modalidade: document.getElementById('manual_modalidade').value.trim(),
+        campeonato: document.getElementById('manual_campeonato').value.trim(),
+        partida: document.getElementById('manual_partida').value.trim(),
+        etapa: document.getElementById('manual_etapa').value.trim(),
+        rodada: document.getElementById('manual_rodada').value.trim()
+      };
+      
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Erro ao salvar');
+        showToast('Configuração manual salva com sucesso no ESP32!', 'success');
+        window.location.href = 'painel.html';
+      })
+      .catch(err => {
+        showToast('Erro ao salvar. Verifique a conexão com o ESP32.', 'error');
       });
     }
   </script>

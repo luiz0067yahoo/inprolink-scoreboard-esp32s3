@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestão de Usuários - Inprolink System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * {
       box-sizing: border-box;
@@ -228,6 +226,7 @@
     }
 
     .role-admin { background: #8e0000; color: #ffcccc; }
+    .role-manager { background: #d84315; color: #ffccbc; }
     .role-operator { background: #1565c0; color: #cce5ff; }
 
     .user-actions {
@@ -260,6 +259,29 @@
       padding-top: 15px;
     }
 
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: 500;
+      z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+
     .btn-nav {
       padding: 10px 18px;
       border-radius: 6px;
@@ -283,7 +305,7 @@
     <!-- Top Header -->
     <div class="header-bar">
       <div class="header-title">
-        <i class="fa-solid fa-users-gear"></i>
+        🧑‍🔧
         <h1>Gestão de Acessos</h1>
       </div>
       <div class="user-counter">
@@ -296,7 +318,7 @@
       <!-- Form Cadastrar / Editar -->
       <div class="form-card">
         <div class="card-title" id="form-title">
-          <i class="fa-solid fa-user-plus"></i> Novo Usuário
+          👤➕ Novo Usuário
         </div>
 
         <form id="userForm" onsubmit="handleSave(event)">
@@ -321,12 +343,13 @@
             <label for="role">Nível de Permissão</label>
             <select id="role" class="input-field">
               <option value="Operador">Operador (Apenas Placar)</option>
+              <option value="Gerente">Gerente (Placar e Automação)</option>
               <option value="Administrador">Administrador (Total)</option>
             </select>
           </div>
 
           <button type="submit" class="btn-submit" id="btnSave">
-            <i class="fa-solid fa-floppy-disk"></i> Salvar Usuário
+            💾 Salvar Usuário
           </button>
           <button type="button" class="btn-submit btn-cancel" id="btnCancel" onclick="resetForm()">
             Cancelar
@@ -337,7 +360,7 @@
       <!-- User List -->
       <div class="list-card">
         <div class="card-title">
-          <i class="fa-solid fa-list-check"></i> Usuários Ativos
+          📋 Usuários Ativos
         </div>
 
         <div class="users-list" id="usersContainer">
@@ -348,11 +371,27 @@
 
     <!-- Footer -->
     <div class="footer-bar">
-      <a href="painel.html" class="btn-nav"><i class="fa-solid fa-arrow-left"></i> Voltar ao Painel</a>
+      <a href="painel.html" class="btn-nav">⬅️ Voltar ao Painel</a>
     </div>
   </div>
 
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
   <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
     if (sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
@@ -371,7 +410,9 @@
         const item = document.createElement('div');
         item.className = 'user-item';
 
-        const roleClass = u.role === 'Administrador' ? 'role-admin' : 'role-operator';
+        let roleClass = 'role-operator';
+        if (u.role === 'Administrador') roleClass = 'role-admin';
+        else if (u.role === 'Gerente') roleClass = 'role-manager';
         const isDefaultAdmin = u.username === 'inprolink';
 
         item.innerHTML = `
@@ -381,8 +422,8 @@
             <span class="user-role ${roleClass}">${u.role}</span>
           </div>
           <div class="user-actions">
-            <button class="btn-icon btn-edit" onclick="editUser(${idx})" title="Editar"><i class="fa-solid fa-pen"></i></button>
-            <button class="btn-icon btn-delete" onclick="deleteUser(${idx})" ${isDefaultAdmin ? 'disabled' : ''} title="Excluir"><i class="fa-solid fa-trash"></i></button>
+            <button class="btn-icon btn-edit" onclick="editUser(${idx})" title="Editar">✏️</button>
+            <button class="btn-icon btn-delete" onclick="deleteUser(${idx})" ${isDefaultAdmin ? 'disabled' : ''} title="Excluir">🗑️</button>
           </div>
         `;
         container.appendChild(item);
@@ -429,7 +470,7 @@
       // Validação de duplicidade de usuário local
       const exists = users.some((u, i) => u.username === username && i !== idx);
       if (exists) {
-        alert('Nome de usuário já cadastrado!');
+        showToast('Nome de usuário já cadastrado!', 'error');
         return;
       }
 
@@ -453,7 +494,7 @@
         console.warn('API offline, salvando localmente...', error);
         if (idx === -1) {
           if (users.length >= MAX_USERS) {
-            alert('Limite máximo de 10 usuários atingido!');
+            showToast('Limite máximo de 10 usuários atingido!', 'error');
             return;
           }
           users.push({ name, username, pass, role });
@@ -475,7 +516,7 @@
       document.getElementById('password').value = u.pass || '';
       document.getElementById('role').value = u.role;
 
-      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-pen"></i> Editar Usuário';
+      document.getElementById('form-title').innerHTML = '📝 Editar Usuário';
       document.getElementById('btnCancel').style.display = 'flex';
       document.getElementById('btnSave').disabled = false;
       document.getElementById('btnSave').style.opacity = '1';
@@ -483,7 +524,7 @@
 
     function deleteUser(idx) {
       if (users[idx].username === 'inprolink') {
-        alert('O usuário administrador padrão não pode ser removido.');
+        showToast('O usuário administrador padrão não pode ser removido.', 'error');
         return;
       }
 
@@ -515,7 +556,7 @@
     function resetForm() {
       document.getElementById('userForm').reset();
       document.getElementById('userIndex').value = -1;
-      document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-user-plus"></i> Novo Usuário';
+      document.getElementById('form-title').innerHTML = '👤➕ Novo Usuário';
       document.getElementById('btnCancel').style.display = 'none';
       render();
     }
