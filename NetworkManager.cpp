@@ -38,6 +38,7 @@ void broadcastState() {
   int secs = totalSeconds % 60;
   sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
   doc["timer"] = timerStr;
+  doc["timerRunning"] = timerRunning;
   
   String response;
   serializeJson(doc, response);

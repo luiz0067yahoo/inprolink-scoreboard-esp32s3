@@ -2520,6 +2520,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
       text-align: center;
       width: 1.5em;
     }
+    /* Timer input needs wider width for HH:MM:SS */
+    input.led-text.digits-timer {
+      width: 11ch;
+      letter-spacing: 4px;
+    }
     input.led-text[readonly] { pointer-events: none; }
 
     /* Mode Selector */
@@ -2818,7 +2823,10 @@ const char painel_html[] PROGMEM = R"rawliteral(
     <!-- Linha Central: Cronômetro (6 dígitos) -->
     <div class="row-middle">
       <div class="led-frame">
-        <input type="text" class="led-text digits-timer" id="timer-display" value="00:00:00" maxlength="8" placeholder="HH:MM:SS" onchange="timerInputChanged()" readonly>
+        <input type="text" class="led-text digits-timer" id="timer-display"
+          value="00:00:00" maxlength="8" placeholder="HH:MM:SS"
+          oninput="timerMask(this)" onchange="timerInputChanged()" readonly>
+
       </div>
       <div class="timer-actions">
         <button class="btn-timer btn-start" onclick="startTimer()">▶️ Iniciar</button>
@@ -2929,10 +2937,16 @@ const char painel_html[] PROGMEM = R"rawliteral(
             const timerEl = document.getElementById('timer-display');
             if (document.activeElement !== timerEl) timerEl.value = data.timer;
             
-            // Sincronizar contador local caso ws desconecte depois
+            // Sincronizar contador local e ajustar intervalo conforme estado do servidor
             const parts = data.timer.split(':');
             if (parts.length === 3) {
               totalSeconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+            }
+            // Se servidor diz que timer esta rodando, garantir intervalo local ativo
+            if (data.timerRunning && !timerInterval) {
+              timerInterval = setInterval(() => { totalSeconds++; updateTimerDisplay(); }, 1000);
+            } else if (!data.timerRunning && timerInterval) {
+              clearInterval(timerInterval); timerInterval = null;
             }
           }
         } catch (e) {
@@ -3004,6 +3018,16 @@ const char painel_html[] PROGMEM = R"rawliteral(
       else timerEl.removeAttribute('readonly');
     }
 
+    // Máscara automática HH:MM:SS
+    function timerMask(el) {
+      let v = el.value.replace(/[^0-9]/g, '').substring(0, 6);
+      let out = '';
+      if (v.length > 4) out = v.substring(0,2) + ':' + v.substring(2,4) + ':' + v.substring(4,6);
+      else if (v.length > 2) out = v.substring(0,2) + ':' + v.substring(2);
+      else out = v;
+      el.value = out;
+    }
+
     function timerInputChanged() {
       const el = document.getElementById('timer-display');
       const raw = el.value.trim();
@@ -3015,7 +3039,9 @@ const char painel_html[] PROGMEM = R"rawliteral(
       else secs = parts[0];
       if (secs < 0) secs = 0;
       totalSeconds = secs;
+      // Normalizar display (ex: 90:00 -> 01:30:00)
       updateTimerDisplay();
+      // Sincronizar com ESP32
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ action: 'timer', command: 'set', value: totalSeconds }));
       }
@@ -3051,28 +3077,27 @@ const char painel_html[] PROGMEM = R"rawliteral(
       updateTimerDisplay();
     }
 
-    // Controle do Cronômetro
+    // Controle do Cronômetro — sempre executa intervalo local para display fluido
     function startTimer() {
+      // Commitar qualquer valor digitado antes de iniciar
+      timerInputChanged();
+      startTimerLocal(); // garante display a cada 1s
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ action: 'timer', command: 'start' }));
-      } else {
-        startTimerLocal();
       }
     }
 
     function pauseTimer() {
+      pauseTimerLocal(); // para o intervalo local
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ action: 'timer', command: 'pause' }));
-      } else {
-        pauseTimerLocal();
       }
     }
 
     function resetTimer() {
+      resetTimerLocal(); // zera local e para intervalo
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ action: 'timer', command: 'reset' }));
-      } else {
-        resetTimerLocal();
       }
     }
 
