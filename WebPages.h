@@ -1910,7 +1910,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         <h1>Configuração do Placar</h1>
       </div>
       <div style="display: flex; align-items: center; gap: 15px;">
-        <div class="wizard-status" id="step-status-text">Passo 1 de 6</div>
+        <div class="wizard-status" id="step-status-text">Passo 1 de 4</div>
         <button class="btn-action" style="background: #e53935; padding: 6px 12px; font-size: 14px; border-radius: 6px;" onclick="window.location.href='painel.html'">❌ Fechar</button>
       </div>
     </div>
@@ -1943,14 +1943,6 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       <div class="step-indicator" id="ind-4">
         <div class="step-circle">4</div>
         <span class="step-label">Partida</span>
-      </div>
-      <div class="step-indicator" id="ind-5">
-        <div class="step-circle">5</div>
-        <span class="step-label">Etapa</span>
-      </div>
-      <div class="step-indicator" id="ind-6">
-        <div class="step-circle">6</div>
-        <span class="step-label">Rodada</span>
       </div>
     </div>
 
@@ -2024,40 +2016,6 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </div>
     </div>
 
-    <!-- Step 5: Etapa -->
-    <div class="step-content" id="step-5">
-      <div class="card-title">
-        🗂️ Selecionar Etapa
-      </div>
-      <div class="options-grid">
-        <div class="option-card selected" onclick="selectCard('etapa', 'Etapa 1', this)">
-          🗃️
-          <span>Etapa 1</span>
-        </div>
-        <div class="option-card" onclick="selectCard('etapa', 'Etapa 2', this)">
-          🗃️
-          <span>Etapa 2</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 6: Rodada -->
-    <div class="step-content" id="step-6">
-      <div class="card-title">
-        📅 Selecionar Rodada
-      </div>
-      <div class="options-grid">
-        <div class="option-card selected" onclick="selectCard('rodada', 'Rodada 1', this)">
-          🔢
-          <span>Rodada 1</span>
-        </div>
-        <div class="option-card" onclick="selectCard('rodada', 'Rodada 2', this)">
-          🔢
-          <span>Rodada 2</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Footer Controls -->
     <div class="footer-bar">
       <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
@@ -2107,7 +2065,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     let currentStep = 1;
-    const totalSteps = 6;
+    const totalSteps = 4;
     let currentMode = 'automatico';
 
     function toggleMode() {
@@ -2135,9 +2093,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       dominio: 'placar.inprolink.com.br',
       modalidade: '',
       campeonato: '',
-      partida: '',
-      etapa: '',
-      rodada: ''
+      partida: ''
     };
 
     function selectCard(field, value, el) {
@@ -2192,7 +2148,8 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         return r.json();
       })
       .then(data => {
-        populateStepOptions('step-2', 'modalidade', data, 'fa-solid fa-futbol');
+        const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Esporte' }));
+        populateStepOptions('step-2', 'modalidade', mapped, 'fa-solid fa-futbol');
         callback();
       })
       .catch(err => {
@@ -2216,7 +2173,8 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         return r.json();
       })
       .then(data => {
-        populateStepOptions('step-3', 'campeonato', data, 'fa-solid fa-medal');
+        const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
+        populateStepOptions('step-3', 'campeonato', mapped, 'fa-solid fa-medal');
         callback();
       })
       .catch(err => {
@@ -2237,7 +2195,12 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         return r.json();
       })
       .then(data => {
-        populateStepOptions('step-4', 'partida', data, 'fa-solid fa-flag-checkered');
+        const mapped = data.map(item => {
+          let home = (item.home_team && item.home_team.name) ? item.home_team.name : 'TBA';
+          let away = (item.away_team && item.away_team.name) ? item.away_team.name : 'TBA';
+          return { id: item.id, nome: home + ' x ' + away };
+        });
+        populateStepOptions('step-4', 'partida', mapped, 'fa-solid fa-flag-checkered');
         callback();
       })
       .catch(err => {
@@ -2247,48 +2210,6 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           { id: 'Partida 2', nome: 'Partida 2' }
         ];
         populateStepOptions('step-4', 'partida', data, 'fa-solid fa-flag-checkered');
-        callback();
-      });
-    }
-
-    function fetchEtapas(domain, part, callback) {
-      fetch(`/api/proxy/etapas?domain=${encodeURIComponent(domain)}&partida=${encodeURIComponent(part)}`)
-      .then(r => {
-        if (!r.ok) throw new Error('API erro');
-        return r.json();
-      })
-      .then(data => {
-        populateStepOptions('step-5', 'etapa', data, 'fa-solid fa-sitemap');
-        callback();
-      })
-      .catch(err => {
-        console.warn('API offline, usando fallback de etapas...', err);
-        const data = [
-          { id: 'Etapa 1', nome: 'Etapa 1' },
-          { id: 'Etapa 2', nome: 'Etapa 2' }
-        ];
-        populateStepOptions('step-5', 'etapa', data, 'fa-solid fa-sitemap');
-        callback();
-      });
-    }
-
-    function fetchRodadas(domain, etapa, callback) {
-      fetch(`/api/proxy/rodadas?domain=${encodeURIComponent(domain)}&etapa=${encodeURIComponent(etapa)}`)
-      .then(r => {
-        if (!r.ok) throw new Error('API erro');
-        return r.json();
-      })
-      .then(data => {
-        populateStepOptions('step-6', 'rodada', data, 'fa-solid fa-list-ol');
-        callback();
-      })
-      .catch(err => {
-        console.warn('API offline, usando fallback de rodadas...', err);
-        const data = [
-          { id: 'Rodada 1', nome: 'Rodada 1' },
-          { id: 'Rodada 2', nome: 'Rodada 2' }
-        ];
-        populateStepOptions('step-6', 'rodada', data, 'fa-solid fa-list-ol');
         callback();
       });
     }
@@ -2313,12 +2234,6 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           return;
         } else if (currentStep === 3) {
           fetchPartidas(domain, wizardData.campeonato, () => proceed());
-          return;
-        } else if (currentStep === 4) {
-          fetchEtapas(domain, wizardData.partida, () => proceed());
-          return;
-        } else if (currentStep === 5) {
-          fetchRodadas(domain, wizardData.etapa, () => proceed());
           return;
         }
       }
@@ -2383,9 +2298,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         dominio: document.getElementById('manual_dominio').value.trim(),
         modalidade: document.getElementById('manual_modalidade').value.trim(),
         campeonato: document.getElementById('manual_campeonato').value.trim(),
-        partida: document.getElementById('manual_partida').value.trim(),
-        etapa: document.getElementById('manual_etapa').value.trim(),
-        rodada: document.getElementById('manual_rodada').value.trim()
+        partida: document.getElementById('manual_partida').value.trim()
       };
       
       fetch('/api/automation/config', {

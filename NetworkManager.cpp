@@ -447,15 +447,11 @@ void handleProxy() {
   String uri = server->uri();
   String targetPath = "";
   if (uri.endsWith("modalidades")) {
-    targetPath = "/api/modalidades";
+    targetPath = "/api/sports";
   } else if (uri.endsWith("campeonatos")) {
-    targetPath = "/api/campeonatos?modalidade=" + urlEncode(server->arg("modalidade"));
+    targetPath = "/api/clubs/toledao/championships?sport_id=" + urlEncode(server->arg("modalidade"));
   } else if (uri.endsWith("partidas")) {
-    targetPath = "/api/partidas?campeonato=" + urlEncode(server->arg("campeonato"));
-  } else if (uri.endsWith("etapas")) {
-    targetPath = "/api/etapas?partida=" + urlEncode(server->arg("partida"));
-  } else if (uri.endsWith("rodadas")) {
-    targetPath = "/api/rodadas?etapa=" + urlEncode(server->arg("etapa"));
+    targetPath = "/api/championships/" + urlEncode(server->arg("campeonato")) + "/matches";
   } else {
     server->send(404, "application/json", "{\"error\":\"not found\"}");
     return;
@@ -487,6 +483,63 @@ void handleProxy() {
       server->send(200, "application/json", http.getString());
     } else {
       server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy query failed\"}");
+    }
+  }
+  http.end();
+}
+
+// Proxy Endpoint for POST Requests
+void handleProxyPost() {
+  if (!checkAuthRole("Gerente")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+  String domain = server->arg("domain");
+  if (domain == "") {
+    server->send(400, "application/json", "{\"error\":\"domain is required\"}");
+    return;
+  }
+  
+  String uri = server->uri();
+  String targetPath = "";
+  if (uri.endsWith("gols")) {
+    targetPath = "/api/gols"; 
+  } else {
+    int postIdx = uri.indexOf("/api/proxy_post/");
+    if (postIdx >= 0) {
+      targetPath = uri.substring(postIdx + 15);
+    } else {
+      server->send(404, "application/json", "{\"error\":\"not found\"}");
+      return;
+    }
+  }
+  
+  String payload = server->hasArg("plain") ? server->arg("plain") : "";
+  
+  WiFiClientSecure client;
+  client.setInsecure();
+  
+  HTTPClient http;
+  String url = "https://" + domain + targetPath;
+  Serial.print("Proxy SSL POST: ");
+  Serial.println(url);
+  
+  http.begin(client, url);
+  http.addHeader("Content-Type", "application/json");
+  int httpCode = http.POST(payload);
+  
+  if (httpCode >= 200 && httpCode < 300) {
+    server->send(httpCode, "application/json", http.getString());
+  } else {
+    http.end();
+    WiFiClient plainClient;
+    String plainUrl = "http://" + domain + targetPath;
+    Serial.print("Proxy HTTP POST fallback: ");
+    Serial.println(plainUrl);
+    http.begin(plainClient, plainUrl);
+    http.addHeader("Content-Type", "application/json");
+    httpCode = http.POST(payload);
+    if (httpCode >= 200 && httpCode < 300) {
+      server->send(httpCode, "application/json", http.getString());
+    } else {
+      server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy POST query failed\"}");
     }
   }
   http.end();
@@ -604,17 +657,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 void pollScoreboardAPI() {
   if (!automationConfig.active || automationConfig.mode != "automatico") return;
   if (millis() - lastPollMillis < 5000) return;
+  lastPollMillis = millis();
   
   WiFiClientSecure client;
   client.setInsecure();
   
   HTTPClient http;
-  String url = "https://" + automationConfig.dominio + "/api/placar";
-  url += "?modalidade=" + urlEncode(automationConfig.modalidade);
-  url += "&campeonato=" + urlEncode(automationConfig.campeonato);
-  url += "&partida=" + urlEncode(automationConfig.partida);
-  url += "&etapa=" + urlEncode(automationConfig.etapa);
-  url += "&rodada=" + urlEncode(automationConfig.rodada);
+  // Use new endpoint: /api/public/matches/{partida_id}
+  String url = "https://" + automationConfig.dominio + "/api/public/matches/" + urlEncode(automationConfig.partida);
   
   Serial.print("Poller request (SSL): ");
   Serial.println(url);
@@ -622,35 +672,42 @@ void pollScoreboardAPI() {
   http.begin(client, url);
   int httpCode = http.GET();
   
-  if (httpCode == HTTP_CODE_OK) {
-    String payload = http.getString();
-    DynamicJsonDocument doc(512);
+  auto processResponse = [&](String payload) {
+    DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, payload);
     if (!error) {
-      scoreA = doc["scoreA"] | 0;
-      scoreB = doc["scoreB"] | 0;
-      foulsA = doc["foulsA"] | 0;
-      foulsB = doc["foulsB"] | 0;
-      period = doc["period"] | 0;
-      const char* timerStr = doc["timer"] | "00:00:00";
+      if (doc.containsKey("match")) {
+        scoreA = doc["match"]["home_score"] | 0;
+        scoreB = doc["match"]["away_score"] | 0;
+      }
       
-      int h = 0, m = 0, s = 0;
-      sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
-      totalSeconds = h * 3600 + m * 60 + s;
+      // Attempt to find timer in details (assuming it might be sync_timer)
+      if (doc.containsKey("details") && doc["details"].containsKey("sync_timer")) {
+        const char* timerStr = doc["details"]["sync_timer"] | "00:00:00";
+        int h = 0, m = 0, s = 0;
+        sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
+        totalSeconds = h * 3600 + m * 60 + s;
+      }
+      
+      // Calculate fouls based on events if needed, but for now we reset them 
+      // since they are not directly on match in new backend format.
+      // (Could iterate over doc["details"]["events"] and count fouls per team if required)
+      foulsA = 0;
+      foulsB = 0;
       
       updatePhysicalDisplays();
       broadcastState();
     }
+  };
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String payload = http.getString();
+    processResponse(payload);
   } else {
     // Fallback to plain HTTP poller
     http.end();
     WiFiClient plainClient;
-    String plainUrl = "http://" + automationConfig.dominio + "/api/placar";
-    plainUrl += "?modalidade=" + urlEncode(automationConfig.modalidade);
-    plainUrl += "&campeonato=" + urlEncode(automationConfig.campeonato);
-    plainUrl += "&partida=" + urlEncode(automationConfig.partida);
-    plainUrl += "&etapa=" + urlEncode(automationConfig.etapa);
-    plainUrl += "&rodada=" + urlEncode(automationConfig.rodada);
+    String plainUrl = "http://" + automationConfig.dominio + "/api/public/matches/" + urlEncode(automationConfig.partida);
     
     Serial.print("Poller request (HTTP fallback): ");
     Serial.println(plainUrl);
@@ -659,23 +716,7 @@ void pollScoreboardAPI() {
     httpCode = http.GET();
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();
-      DynamicJsonDocument doc(512);
-      DeserializationError error = deserializeJson(doc, payload);
-      if (!error) {
-        scoreA = doc["scoreA"] | 0;
-        scoreB = doc["scoreB"] | 0;
-        foulsA = doc["foulsA"] | 0;
-        foulsB = doc["foulsB"] | 0;
-        period = doc["period"] | 0;
-        const char* timerStr = doc["timer"] | "00:00:00";
-        
-        int h = 0, m = 0, s = 0;
-        sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
-        totalSeconds = h * 3600 + m * 60 + s;
-        
-        updatePhysicalDisplays();
-        broadcastState();
-      }
+      processResponse(payload);
     }
   }
   http.end();

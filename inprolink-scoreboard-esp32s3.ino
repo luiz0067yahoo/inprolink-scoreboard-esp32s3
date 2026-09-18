@@ -155,6 +155,10 @@ void setup() {
   server->on("/api/proxy/etapas", HTTP_GET, handleProxy);
   server->on("/api/proxy/rodadas", HTTP_GET, handleProxy);
   
+  // POST routes for pushing data (gols, updates)
+  server->on("/api/proxy_post/gols", HTTP_POST, handleProxyPost);
+  server->on("/api/proxy_post/update_score", HTTP_POST, handleProxyPost);
+  
   server->begin();
   Serial.printf("Servidor HTTP iniciado na porta %d\n", wifiConfig.httpPort);
   

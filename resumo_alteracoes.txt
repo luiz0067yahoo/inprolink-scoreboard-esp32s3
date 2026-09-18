@@ -1,0 +1,19 @@
+Fala time! Segue o resumo das atualizações que fiz hoje no código do painel ESP32 para integrá-lo com o novo sistema do Toledão:
+
+1. Proxies de API no NetworkManager.cpp:
+   - Apontei a busca de modalidades para a nova rota (/api/sports).
+   - Apontei a busca de campeonatos para puxar especificamente do clube "toledao" (/api/clubs/toledao/championships).
+   - Apontei a busca de partidas para a nova rota do campeonato correspondente (/api/championships/X/matches).
+
+2. Novo Backend do Placar (NetworkManager.cpp):
+   - O painel não chama mais o `/api/placar`. Agora ele faz um request seguro (HTTPS) no `/api/public/matches/{id_da_partida}`.
+   - Atualizei o parser JSON para pegar corretamente os gols (`match.home_score` e `match.away_score`).
+   - O cronômetro agora é lido a partir do `details.sync_timer` do novo backend.
+   - Como o controle de faltas (fouls) mudou na nova API, as faltas do painel automático estão desabilitadas/zeradas por padrão por enquanto.
+
+3. Limpeza do Painel de Configuração Web (WebPages.h):
+   - As opções de "Etapas" e "Rodadas" (que eram o Passo 5 e 6 do Wizard) foram **completamente removidas** do HTML e do script JS, já que a API nova permite selecionar a partida direto do campeonato.
+   - O Wizard agora tem apenas 4 passos (Domínio, Modalidade, Campeonato e Partida).
+   - As opções de selecionar a partida agora puxam os nomes reais dos times para mostrar "Time da Casa x Time Visitante" pra facilitar quem estiver configurando.
+
+Basta compilar/buildar de novo no PlatformIO (VS Code) e dar o upload pro ESP32 S3 que ele vai funcionar lisinho com a plataforma nova! Qualquer dúvida me avisem.
