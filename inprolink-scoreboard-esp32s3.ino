@@ -34,7 +34,7 @@ void setup() {
     wifiConfig.staticSubnet = "255.255.255.0";
     wifiConfig.staticGateway = "192.168.1.1";
     wifiConfig.staticDns = "8.8.8.8";
-    wifiConfig.apSsid = "inprolink_system";
+    wifiConfig.apSsid = "inprolinksystem";
     wifiConfig.apPass = "too@ajw8i67";
     wifiConfig.apChannel = 6;
     wifiConfig.httpPort = 80;
@@ -50,7 +50,7 @@ void setup() {
     wifiConfig.staticSubnet = doc["staticSubnet"] | "255.255.255.0";
     wifiConfig.staticGateway = doc["staticGateway"] | "192.168.1.1";
     wifiConfig.staticDns = doc["staticDns"] | "8.8.8.8";
-    wifiConfig.apSsid = doc["apSsid"] | "inprolink_system";
+    wifiConfig.apSsid = doc["apSsid"] | "inprolinksystem";
     wifiConfig.apPass = doc["apPass"] | "too@ajw8i67";
     wifiConfig.apChannel = doc["apChannel"] | 6;
     wifiConfig.httpPort = doc["httpPort"] | 80;
@@ -81,8 +81,8 @@ void setup() {
     automationConfig.rodada = doc["rodada"] | "";
   }
   
-  // Initialize WS2812B NeoPixel strips for the 16 digits
-  for (int i = 0; i < 16; i++) {
+  // Initialize WS2812B NeoPixel strips for the 18 digits
+  for (int i = 0; i < 18; i++) {
     digits[i] = new Adafruit_NeoPixel(35, digitPins[i], NEO_GRB + NEO_KHZ800);
     digits[i]->begin();
     digits[i]->setBrightness(50);
@@ -114,8 +114,8 @@ void setup() {
   }
   
   // Initialize local mDNS Responder
-  if (MDNS.begin("inprolink_system")) {
-    Serial.println("mDNS ativo: http://inprolink_system.local");
+  if (MDNS.begin("inprolinksystem")) {
+    Serial.println("mDNS ativo: http://inprolinksystem.local");
   }
   
   // Start Web Server on custom HTTP port
@@ -208,7 +208,7 @@ void loop() {
         preferences.clear();
         
         // Clear all NeoPixel strips to indicate success
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 18; i++) {
           if (digits[i] != nullptr) {
             digits[i]->clear();
             digits[i]->show();

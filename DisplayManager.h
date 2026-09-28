@@ -3,9 +3,9 @@
 
 #include "Globals.h"
 
-extern Adafruit_NeoPixel* digits[16];
-extern const int digitPins[16];
-extern const byte segmentMap[10];
+extern Adafruit_NeoPixel* digits[18];
+extern const int digitPins[18];
+extern const byte segmentMap[16];
 
 uint32_t getDigitColor(int index);
 void drawDigit(int digitIndex, int val, uint32_t color);

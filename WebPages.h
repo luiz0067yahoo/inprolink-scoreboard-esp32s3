@@ -2424,6 +2424,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
     }
 
     .digits-2 { font-size: 3.8rem; letter-spacing: 4px; }
+    .digits-3 { font-size: 3.5rem; letter-spacing: 3px; }
     .digits-timer { font-size: 5rem; letter-spacing: 6px; padding: 10px 30px; }
 
     input.led-text {
@@ -2432,6 +2433,9 @@ const char painel_html[] PROGMEM = R"rawliteral(
       outline: none;
       text-align: center;
       width: 1.5em;
+    }
+    input.led-text.digits-3 {
+      width: 2.2em;
     }
     /* Timer input needs wider width for HH:MM:SS */
     input.led-text.digits-timer {
@@ -2698,12 +2702,12 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     <!-- Linha Superior: Time A, Logo, Time B -->
     <div class="row-top">
-      <!-- Time A (2 dígitos) -->
+      <!-- Time A (3 dígitos) -->
       <div class="module-card">
         <span class="module-title" id="title-team-a">TIME A</span>
         <div class="display-group">
           <div class="led-frame">
-            <input type="text" class="led-text digits-2" id="score-a" value="00" maxlength="2" onchange="manualInputChanged('score-a')">
+            <input type="text" class="led-text digits-3" id="score-a" value="000" maxlength="3" onchange="manualInputChanged('score-a')">
           </div>
           <div class="btn-controls">
             <button class="btn-step btn-plus" onclick="changeValue('score-a', 1)">+</button>
@@ -2717,12 +2721,12 @@ const char painel_html[] PROGMEM = R"rawliteral(
       <div class="logo-container">
       </div>
 
-      <!-- Time B (2 dígitos) -->
+      <!-- Time B (3 dígitos) -->
       <div class="module-card">
         <span class="module-title" id="title-team-b">TIME B</span>
         <div class="display-group">
           <div class="led-frame">
-            <input type="text" class="led-text digits-2" id="score-b" value="00" maxlength="2" onchange="manualInputChanged('score-b')">
+            <input type="text" class="led-text digits-3" id="score-b" value="000" maxlength="3" onchange="manualInputChanged('score-b')">
           </div>
           <div class="btn-controls">
             <button class="btn-step btn-plus" onclick="changeValue('score-b', 1)">+</button>
@@ -2840,7 +2844,10 @@ const char painel_html[] PROGMEM = R"rawliteral(
           if (data.type === 'state') {
             const setVal = (id, val) => {
               const el = document.getElementById(id);
-              if (document.activeElement !== el) el.value = String(val).padStart(2, '0');
+              if (document.activeElement !== el) {
+                const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+                el.value = String(val).padStart(padLen, '0');
+              }
             };
             setVal('score-a', data.scoreA);
             setVal('score-b', data.scoreB);
@@ -2887,8 +2894,10 @@ const char painel_html[] PROGMEM = R"rawliteral(
         let val = parseInt(el.value, 10) + amount;
         if (isNaN(val)) val = 0;
         if (val < 0) val = 0;
-        if (val > 99) val = 99;
-        el.value = String(val).padStart(2, '0');
+        const maxVal = (id === 'score-a' || id === 'score-b') ? 999 : 99;
+        if (val > maxVal) val = maxVal;
+        const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+        el.value = String(val).padStart(padLen, '0');
       }
     }
 
@@ -2897,8 +2906,10 @@ const char painel_html[] PROGMEM = R"rawliteral(
       let val = parseInt(el.value, 10);
       if (isNaN(val)) val = 0;
       if (val < 0) val = 0;
-      if (val > 99) val = 99;
-      el.value = String(val).padStart(2, '0');
+      const maxVal = (id === 'score-a' || id === 'score-b') ? 999 : 99;
+      if (val > maxVal) val = maxVal;
+      const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+      el.value = String(val).padStart(padLen, '0');
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ action: 'set', target: id, value: val }));
       }
@@ -3093,8 +3104,8 @@ const char painel_html[] PROGMEM = R"rawliteral(
             ws.send(JSON.stringify({ action: 'reset_all' }));
           } else {
             // Fallback local
-            document.getElementById('score-a').value = '00';
-            document.getElementById('score-b').value = '00';
+            document.getElementById('score-a').value = '000';
+            document.getElementById('score-b').value = '000';
             document.getElementById('fouls-a').value = '00';
             document.getElementById('fouls-b').value = '00';
             document.getElementById('period').value = '00';

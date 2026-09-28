@@ -585,9 +585,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           const char* target = doc["target"];
           int amount = doc["amount"] | 0;
           if (strcmp(target, "score-a") == 0) {
-            scoreA = constrain(scoreA + amount, 0, 99);
+            scoreA = constrain(scoreA + amount, 0, 999);
           } else if (strcmp(target, "score-b") == 0) {
-            scoreB = constrain(scoreB + amount, 0, 99);
+            scoreB = constrain(scoreB + amount, 0, 999);
           } else if (strcmp(target, "fouls-a") == 0) {
             foulsA = constrain(foulsA + amount, 0, 99);
           } else if (strcmp(target, "fouls-b") == 0) {
@@ -601,9 +601,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           const char* target = doc["target"];
           int value = doc["value"] | 0;
           if (strcmp(target, "score-a") == 0) {
-            scoreA = constrain(value, 0, 99);
+            scoreA = constrain(value, 0, 999);
           } else if (strcmp(target, "score-b") == 0) {
-            scoreB = constrain(value, 0, 99);
+            scoreB = constrain(value, 0, 999);
           } else if (strcmp(target, "fouls-a") == 0) {
             foulsA = constrain(value, 0, 99);
           } else if (strcmp(target, "fouls-b") == 0) {
