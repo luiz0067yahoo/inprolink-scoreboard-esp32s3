@@ -77,22 +77,34 @@ Para o primeiro acesso ou após um reset de fábrica:
 
 ### 📐 Diagrama de Segmentos (35 LEDs por Dígito)
 
-Cada dígito utiliza **7 segmentos** (A a G) e cada segmento contém **5 LEDs endereçáveis** ligados em série:
+<p align="center">
+  <img src="segment_map.png" alt="Mapa dos Segmentos" width="280">
+</p>
+
+Cada dígito utiliza **7 segmentos** (a a g) e cada segmento contém **5 LEDs endereçáveis** ligados em série na seguinte ordem física:
+
+* **Segmento `a` (LEDs 0 a 4):** Superior Esquerdo
+* **Segmento `b` (LEDs 5 a 9):** Topo / Superior
+* **Segmento `c` (LEDs 10 a 14):** Superior Direito
+* **Segmento `d` (LEDs 15 a 19):** Meio / Centro
+* **Segmento `e` (LEDs 20 a 24):** Inferior Esquerdo
+* **Segmento `f` (LEDs 25 a 29):** Base / Inferior
+* **Segmento `g` (LEDs 30 a 34):** Inferior Direito
 
 ```text
-       Segmento A (5 LEDs)
+       Segmento b (5 LEDs)
        +---------------+
-       |    AAAAAAA    |
-  Seg F|               |Seg B
+       |    bbbbbbb    |
+ Seg a |               | Seg c
 (5 LEDs)|               |(5 LEDs)
-       |    GGGGGGG    |
-       +---------------+  <-- Segmento G (5 LEDs)
+       |    ddddddd    |
+       +---------------+  <-- Segmento d (5 LEDs)
        |               |
-  Seg E|               |Seg C
+ Seg e |               | Seg g
 (5 LEDs)|               |(5 LEDs)
-       |    DDDDDDD    |
+       |    fffffff    |
        +---------------+
-       Segmento D (5 LEDs)
+       Segmento f (5 LEDs)
 
  Total por Dígito = 7 segmentos x 5 LEDs = 35 LEDs WS2812B
 ```
@@ -101,22 +113,22 @@ Cada dígito utiliza **7 segmentos** (A a G) e cada segmento contém **5 LEDs en
 
 | Caractere | Segmentos Acesos | Máscara Binária | Hexadecimal |
 | :---: | :--- | :---: | :---: |
-| **0** | `A, B, C, D, E, F` | `0b00111111` | `0x3F` |
-| **1** | `B, C` | `0b00000110` | `0x06` |
-| **2** | `A, B, D, E, G` | `0b01011011` | `0x5B` |
-| **3** | `A, B, C, D, G` | `0b01001111` | `0x4F` |
-| **4** | `B, C, F, G` | `0b01100110` | `0x66` |
-| **5** | `A, C, D, F, G` | `0b01101101` | `0x6D` |
-| **6** | `A, C, D, E, F, G` | `0b01111101` | `0x7D` |
-| **7** | `A, B, C` | `0b00000111` | `0x07` |
-| **8** | `A, B, C, D, E, F, G` | `0b01111111` | `0x7F` |
-| **9** | `A, B, C, D, F, G` | `0b01101111` | `0x6F` |
-| **A** | `A, B, C, E, F, G` | `0b01110111` | `0x77` |
-| **b** | `C, D, E, F, G` | `0b01111100` | `0x7C` |
-| **C** | `A, D, E, F` | `0b00111001` | `0x39` |
-| **d** | `B, C, D, E, G` | `0b01011110` | `0x5E` |
-| **E** | `A, D, E, F, G` | `0b01111001` | `0x79` |
-| **F** | `A, E, F, G` | `0b01110001` | `0x71` |
+| **0** | `a, b, c, e, f, g` | `0b01110111` | `0x77` |
+| **1** | `c, g` | `0b01000100` | `0x44` |
+| **2** | `b, c, d, e, f` | `0b00111110` | `0x3E` |
+| **3** | `b, c, d, f, g` | `0b01101110` | `0x6E` |
+| **4** | `a, c, d, g` | `0b01001101` | `0x4D` |
+| **5** | `a, b, d, f, g` | `0b01101011` | `0x6B` |
+| **6** | `a, b, d, e, f, g` | `0b01111011` | `0x7B` |
+| **7** | `b, c, g` | `0b01000110` | `0x46` |
+| **8** | `a, b, c, d, e, f, g` | `0b01111111` | `0x7F` |
+| **9** | `a, b, c, d, f, g` | `0b01101111` | `0x6F` |
+| **A** | `a, b, c, d, e, g` | `0b01011111` | `0x5F` |
+| **b** | `a, d, e, f, g` | `0b01111001` | `0x79` |
+| **C** | `a, b, e, f` | `0b00110011` | `0x33` |
+| **d** | `c, d, e, f, g` | `0b01111100` | `0x7C` |
+| **E** | `a, b, d, e, f` | `0b00111011` | `0x3B` |
+| **F** | `a, b, d, e` | `0b00011011` | `0x1B` |
 
 ---
 

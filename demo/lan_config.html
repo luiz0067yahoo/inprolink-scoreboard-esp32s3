@@ -235,6 +235,9 @@
     }
 
     .btn-inline:hover { background: #333; }
+    .btn-inline:disabled { opacity: 0.6; cursor: not-allowed; }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
 
     /* Switch Component */
     .switch-container {
@@ -344,6 +347,7 @@
     .btn-back { background: #222; }
     .btn-save { background: linear-gradient(180deg, #2e7d32, #1b5e20); }
     .btn-test { background: linear-gradient(180deg, #1565c0, #0d47a1); }
+    .btn-forget { background: linear-gradient(180deg, #c62828, #b71c1c); }
 
     /* Static IP Fields Toggle */
     #staticIpFields {
@@ -415,15 +419,18 @@
       <div class="input-group">
         <label>Rede Wi-Fi (SSID)</label>
         <div class="input-wrapper">
-          <select id="wifiSsid" class="input-field" style="flex: 1;">
-            <option value="Clube_Membros">Clube_Membros (-64 dBm)</option>
-            <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
-            <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
+          <select id="wifiSsid" class="input-field" style="flex: 1;" onchange="handleSsidChange()">
+            <option value="">Aguarde ou clique em Escanear...</option>
           </select>
-          <button type="button" class="btn-inline" onclick="scanNetworks()">
-            <span id="iconScan">🔄</span> Escanear
+          <button type="button" class="btn-inline" id="btnScan" onclick="scanNetworks()">
+            <span id="iconScan">🔄</span> <span id="textScan">Escanear</span>
           </button>
         </div>
+      </div>
+
+      <div class="input-group" id="manualSsidGroup" style="display: none; margin-top: 10px;">
+        <label>Digitar Nome da Rede (SSID Manual)</label>
+        <input type="text" id="wifiSsidManual" class="input-field" placeholder="Ex: MinhaRede_2.4G">
       </div>
 
       <div class="input-group">
@@ -532,7 +539,10 @@
     <!-- Footer Bar -->
     <div class="footer-bar">
       <a href="painel.html" class="btn-nav btn-back">⬅️ Painel</a>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn-nav btn-forget" onclick="forgetWifi()">
+          🗑️ Esquecer Rede
+        </button>
         <button type="button" class="btn-nav btn-test" onclick="testConnection()">
           🧪 Testar
         </button>
@@ -610,9 +620,8 @@
 
         // Carregar campos
         const wifiSsidSelect = document.getElementById('wifiSsid');
-        // Garantir que a rede atual esteja listada
         if (data.wifiSsid) {
-          wifiSsidSelect.innerHTML = `<option value="${data.wifiSsid}">${data.wifiSsid}</option>`;
+          wifiSsidSelect.innerHTML = `<option value="${data.wifiSsid}" selected>⭐ ${data.wifiSsid} (Salva)</option>`;
         }
         document.getElementById('wifiPass').value = data.wifiPass || '';
         document.getElementById('dhcpToggle').checked = data.dhcp;
@@ -630,6 +639,8 @@
         document.getElementById('autoReconnect').checked = data.autoReconnect;
 
         toggleDhcp();
+        // Escanear redes automaticamente após carregar status
+        setTimeout(scanNetworks, 350);
       })
       .catch(err => {
         console.warn('API offline, usando fallback local de visualização...', err);
@@ -646,48 +657,137 @@
       });
     }
 
+    function handleSsidChange() {
+      const select = document.getElementById('wifiSsid');
+      const manualGroup = document.getElementById('manualSsidGroup');
+      if (select && manualGroup) {
+        if (select.value === '__manual__') {
+          manualGroup.style.display = 'block';
+          const input = document.getElementById('wifiSsidManual');
+          if (input) input.focus();
+        } else {
+          manualGroup.style.display = 'none';
+        }
+      }
+    }
+
+    function populateWifiList(networks, keepSelected) {
+      const select = document.getElementById('wifiSsid');
+      if (!select) return;
+      select.innerHTML = '';
+
+      const defaultOpt = document.createElement('option');
+      defaultOpt.value = '';
+      defaultOpt.innerText = '-- Selecione uma Rede Wi-Fi --';
+      select.appendChild(defaultOpt);
+
+      let foundSelected = false;
+
+      // Filtrar vazios e duplicatas mantendo o sinal mais forte
+      const map = new Map();
+      if (Array.isArray(networks)) {
+        networks.forEach(net => {
+          if (net && net.ssid && net.ssid.trim().length > 0) {
+            const existing = map.get(net.ssid);
+            if (!existing || net.rssi > existing.rssi) {
+              map.set(net.ssid, net);
+            }
+          }
+        });
+      }
+
+      const uniqueNets = Array.from(map.values());
+      uniqueNets.sort((a, b) => (b.rssi || -100) - (a.rssi || -100));
+
+      uniqueNets.forEach(net => {
+        const opt = document.createElement('option');
+        opt.value = net.ssid;
+        let sig = '📶';
+        if (net.rssi < -80) sig = ' ▂';
+        else if (net.rssi < -67) sig = ' ▂▄';
+        else sig = ' ▂▄▆█';
+        const lock = net.secure ? ' 🔒' : '';
+        opt.innerText = `${sig} ${net.ssid} (${net.rssi} dBm)${lock}`;
+        if (net.ssid === keepSelected) {
+          opt.selected = true;
+          foundSelected = true;
+        }
+        select.appendChild(opt);
+      });
+
+      if (uniqueNets.length === 0 && (!keepSelected || keepSelected === '__manual__')) {
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.innerText = '⚠️ Nenhuma rede 2.4 GHz detectada';
+        select.appendChild(emptyOpt);
+      }
+
+      // Se havia rede salva anteriormente que não apareceu no scan, mantê-la disponível
+      if (keepSelected && !foundSelected && keepSelected !== '__manual__') {
+        const opt = document.createElement('option');
+        opt.value = keepSelected;
+        opt.innerText = `⭐ ${keepSelected} (Salva/Atual)`;
+        opt.selected = true;
+        select.insertBefore(opt, select.children[1] || null);
+      }
+
+      // Opção para digitar manualmente caso a rede seja oculta ou não apareça
+      const manualOpt = document.createElement('option');
+      manualOpt.value = '__manual__';
+      manualOpt.innerText = '✏️ Digitar outra rede manualmente...';
+      if (keepSelected === '__manual__') {
+        manualOpt.selected = true;
+      }
+      select.appendChild(manualOpt);
+
+      handleSsidChange();
+    }
+
     function scanNetworks() {
       if (isScanPending) return;
       const icon = document.getElementById('iconScan');
-      icon.classList.add('fa-spin');
+      const text = document.getElementById('textScan');
+      const btn = document.getElementById('btnScan');
+
       isScanPending = true;
+      if (icon) icon.classList.add('spin');
+      if (text) text.innerText = 'Buscando...';
+      if (btn) btn.disabled = true;
+
+      const currentSelected = (document.getElementById('wifiSsid') ? document.getElementById('wifiSsid').value : '') || '';
 
       fetch('/api/wifi/scan')
       .then(r => {
-        if (!r.ok) throw new Error('Falha no escaneamento');
+        if (!r.ok) throw new Error('Falha no escaneamento (' + r.status + ')');
         return r.json();
       })
       .then(networks => {
-        icon.classList.remove('fa-spin');
-        isScanPending = false;
-        
-        const select = document.getElementById('wifiSsid');
-        select.innerHTML = '';
-        if (networks.length === 0) {
-          select.innerHTML = '<option value="">Nenhuma rede encontrada</option>';
+        finishScan();
+        populateWifiList(networks, currentSelected);
+        if (Array.isArray(networks) && networks.length > 0) {
+          showToast(`Busca concluída! ${networks.length} rede(s) encontrada(s).`, 'success');
         } else {
-          networks.forEach(net => {
-            const opt = document.createElement('option');
-            opt.value = net.ssid;
-            opt.innerText = `${net.ssid} (${net.rssi} dBm)`;
-            select.appendChild(opt);
-          });
+          showToast('Nenhuma rede 2.4 GHz detectada. Tente novamente ou digite manualmente.', 'error');
         }
-        showToast(`Busca concluída! ${networks.length} redes encontradas.`, 'success');
       })
       .catch(err => {
-        icon.classList.remove('fa-spin');
-        isScanPending = false;
+        finishScan();
         console.warn('API offline, simulando redes para demonstração...', err);
-        // Fallback simulação
-        const select = document.getElementById('wifiSsid');
-        select.innerHTML = `
-          <option value="Clube_Membros">Clube_Membros (-64 dBm)</option>
-          <option value="Inprolink_Tech">Inprolink_Tech (-72 dBm)</option>
-          <option value="TFC_Visitantes">TFC_Visitantes (-80 dBm)</option>
-        `;
-        showToast('Busca concluída! 3 redes simuladas.', 'success');
+        // Fallback simulação para teste local / GitHub pages
+        populateWifiList([
+          { ssid: 'Clube_Membros', rssi: -64, secure: true },
+          { ssid: 'Inprolink_Tech', rssi: -72, secure: true },
+          { ssid: 'TFC_Visitantes', rssi: -80, secure: false }
+        ], currentSelected);
+        showToast('Busca concluída! Redes carregadas.', 'success');
       });
+
+      function finishScan() {
+        isScanPending = false;
+        if (icon) icon.classList.remove('spin');
+        if (text) text.innerText = 'Escanear';
+        if (btn) btn.disabled = false;
+      }
     }
 
     function testConnection() {
@@ -703,8 +803,18 @@
     }
 
     function saveSettings() {
+      let ssid = document.getElementById('wifiSsid').value;
+      if (ssid === '__manual__') {
+        const manualInput = document.getElementById('wifiSsidManual');
+        ssid = manualInput ? manualInput.value.trim() : '';
+      }
+      if (!ssid) {
+        showToast('Por favor, selecione ou digite a rede Wi-Fi.', 'error');
+        return;
+      }
+
       const config = {
-        wifiSsid: document.getElementById('wifiSsid').value,
+        wifiSsid: ssid,
         wifiPass: document.getElementById('wifiPass').value,
         dhcp: document.getElementById('dhcpToggle').checked,
         staticIp: document.getElementById('staticIp').value,
@@ -738,6 +848,45 @@
           wsPort: config.wsPort
         }));
         showToast('Configurações salvas no localStorage (Simulado)!', 'success');
+      });
+    }
+
+    function forgetWifi() {
+      if (!confirm('Deseja realmente esquecer a rede Wi-Fi configurada?\nO ESP32 desconectará da rede e reiniciará no modo Ponto de Acesso (Hotspot).')) {
+        return;
+      }
+      showToast('Esquecendo rede Wi-Fi...', 'info');
+      fetch('/api/wifi/forget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          showToast('Rede esquecida! O dispositivo reiniciará no modo Ponto de Acesso.', 'success');
+          setTimeout(() => {
+            const select = document.getElementById('wifiSsid');
+            if (select) select.innerHTML = '<option value="">Selecione uma rede...</option>';
+            const pass = document.getElementById('wifiPass');
+            if (pass) pass.value = '';
+          }, 1000);
+        } else {
+          showToast(data.error || 'Erro ao esquecer rede.', 'error');
+        }
+      })
+      .catch(err => {
+        console.warn('API offline, simulando esquecimento...', err);
+        const saved = localStorage.getItem('inprolink_wifi_config');
+        if (saved) {
+          const cfg = JSON.parse(saved);
+          cfg.ssid = '';
+          localStorage.setItem('inprolink_wifi_config', JSON.stringify(cfg));
+        }
+        showToast('Rede esquecida! O dispositivo desconectará e reiniciará no modo Ponto de Acesso.', 'success');
+        const select = document.getElementById('wifiSsid');
+        if (select) select.innerHTML = '<option value="">Selecione uma rede...</option>';
+        const pass = document.getElementById('wifiPass');
+        if (pass) pass.value = '';
       });
     }
 

@@ -4,42 +4,60 @@
 Adafruit_NeoPixel* digits[18] = {nullptr};
 const int digitPins[18] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
 
-// Segment map for digits 0-9 and Hex A-F (active high segment order: A, B, C, D, E, F, G)
+// Mapa de segmentos baseado no diagrama do hardware:
+// Bit 0 (a): Superior Esquerdo (LEDs 0-4)
+// Bit 1 (b): Topo (LEDs 5-9)
+// Bit 2 (c): Superior Direito (LEDs 10-14)
+// Bit 3 (d): Meio / Centro (LEDs 15-19)
+// Bit 4 (e): Inferior Esquerdo (LEDs 20-24)
+// Bit 5 (f): Base / Inferior (LEDs 25-29)
+// Bit 6 (g): Inferior Direito (LEDs 30-34)
 const byte segmentMap[16] = {
-  0b00111111, // 0: A, B, C, D, E, F
-  0b00000110, // 1: B, C
-  0b01011011, // 2: A, B, D, E, G
-  0b01001111, // 3: A, B, C, D, G
-  0b01100110, // 4: B, C, F, G
-  0b01101101, // 5: A, C, D, F, G
-  0b01111101, // 6: A, C, D, E, F, G
-  0b00000111, // 7: A, B, C
-  0b01111111, // 8: A, B, C, D, E, F, G
-  0b01101111, // 9: A, B, C, D, F, G
-  0b01110111, // A: A, B, C, E, F, G
-  0b01111100, // b: C, D, E, F, G
-  0b00111001, // C: A, D, E, F
-  0b01011110, // d: B, C, D, E, G
-  0b01111001, // E: A, D, E, F, G
-  0b01110001  // F: A, E, F, G
+  0b01110111, // 0: a, b, c, e, f, g
+  0b01000100, // 1: c, g
+  0b00111110, // 2: b, c, d, e, f
+  0b01101110, // 3: b, c, d, f, g
+  0b01001101, // 4: a, c, d, g
+  0b01101011, // 5: a, b, d, f, g
+  0b01111011, // 6: a, b, d, e, f, g
+  0b01000110, // 7: b, c, g
+  0b01111111, // 8: a, b, c, d, e, f, g
+  0b01101111, // 9: a, b, c, d, f, g
+  0b01011111, // A: a, b, c, d, e, g
+  0b01111001, // b: a, d, e, f, g
+  0b00110011, // C: a, b, e, f
+  0b01111100, // d: c, d, e, f, g
+  0b00111011, // E: a, b, d, e, f
+  0b00011011  // F: a, b, d, e
 };
 
 uint32_t getDigitColor(int index) {
-  // 0, 1, 2: Points A (Red)
-  // 3, 4, 5: Points B (Red)
-  // 6, 7: Fouls A (Orange)
-  // 8, 9: Period (Yellow)
-  // 10, 11: Fouls B (Orange)
-  // 12-17: Timer (Green)
-  if (index >= 0 && index <= 5) return 0xFF0000;
-  if (index >= 6 && index <= 7) return 0xFF5500;
-  if (index >= 8 && index <= 9) return 0xFFFF00;
-  if (index >= 10 && index <= 11) return 0xFF5500;
-  return 0x00FF00;
+  (void)index;
+  // Todos os dígitos em cor branca (R: 255, G: 255, B: 255)
+  return 0xFFFFFF;
+}
+
+// Cache to avoid bit-banging WS2812B strips when digit value/color hasn't changed
+static int cachedDigitVal[18] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+static uint32_t cachedDigitColor[18] = {0};
+
+void invalidateDisplayCache() {
+  for (int i = 0; i < 18; i++) {
+    cachedDigitVal[i] = -1;
+    cachedDigitColor[i] = 0;
+  }
 }
 
 void drawDigit(int digitIndex, int val, uint32_t color) {
   if (digitIndex < 0 || digitIndex >= 18 || digits[digitIndex] == nullptr) return;
+  
+  // Fast return if the displayed digit has not changed
+  if (cachedDigitVal[digitIndex] == val && cachedDigitColor[digitIndex] == color) {
+    return;
+  }
+  cachedDigitVal[digitIndex] = val;
+  cachedDigitColor[digitIndex] = color;
+
   Adafruit_NeoPixel* strip = digits[digitIndex];
   strip->clear();
   

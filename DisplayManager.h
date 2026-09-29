@@ -10,5 +10,6 @@ extern const byte segmentMap[16];
 uint32_t getDigitColor(int index);
 void drawDigit(int digitIndex, int val, uint32_t color);
 void updatePhysicalDisplays();
+void invalidateDisplayCache();
 
 #endif // DISPLAY_MANAGER_H

@@ -74,26 +74,33 @@ bool checkAuthRole(String requiredRole) {
   return role == requiredRole;
 }
 
-void handleRoot() { server->send(200, "text/html", login_html); }
+void handleRoot() { 
+  if (checkAuth()) {
+    server->sendHeader("Location", "/painel.html");
+    server->send(302, "text/plain", "");
+    return;
+  }
+  server->send_P(200, "text/html", login_html); 
+}
 void handleUserAdm() { 
   if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
-  server->send(200, "text/html", user_adm_html); 
+  server->send_P(200, "text/html", user_adm_html); 
 }
 void handleLanConfig() { 
   if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
-  server->send(200, "text/html", lan_config_html); 
+  server->send_P(200, "text/html", lan_config_html); 
 }
 void handleSsidConfig() { 
   if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
-  server->send(200, "text/html", ssid_config_html); 
+  server->send_P(200, "text/html", ssid_config_html); 
 }
 void handlePanelConfig() { 
   if (!checkAuthRole("Gerente")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
-  server->send(200, "text/html", panel_config_html); 
+  server->send_P(200, "text/html", panel_config_html); 
 }
 void handlePainel() { 
   if (!checkAuth()) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
-  server->send(200, "text/html", painel_html); 
+  server->send_P(200, "text/html", painel_html); 
 }
 
 void handleLogin() {
@@ -285,21 +292,69 @@ void handleWifiStatus() {
 }
 
 void handleWifiScan() {
-  if (!checkAuthRole("Administrador")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
-  int n = WiFi.scanNetworks();
-  DynamicJsonDocument doc(2048);
+  // Garantir que a interface STA esteja ativa para permitir o escaneamento
+  wifi_mode_t currentMode = WiFi.getMode();
+  if ((currentMode & WIFI_MODE_STA) == 0) {
+    WiFi.mode(WIFI_MODE_APSTA);
+    delay(100);
+  }
+
+  // Se o ESP32 estiver tentando conectar a um roteador (connecting),
+  // o driver do Wi-Fi aborta o scan com erro ESP_ERR_WIFI_STATE (-2).
+  // Chamar WiFi.disconnect(false) coloca a STA em repouso e libera o rádio.
+  bool wasConnected = (WiFi.status() == WL_CONNECTED);
+  if (!wasConnected) {
+    WiFi.disconnect(false);
+    delay(100);
+  }
+
+  Serial.println("[Wi-Fi] Iniciando escaneamento de redes...");
+  WiFi.scanDelete();
+
+  int16_t n = WiFi.scanNetworks(false, true, false, 250);
+  if (n < 0) {
+    Serial.printf("[Wi-Fi] Falha temporária no scan (%d), tentando novamente...\n", n);
+    WiFi.disconnect(false);
+    delay(200);
+    n = WiFi.scanNetworks(false, true, false, 300);
+  }
+  Serial.printf("[Wi-Fi] Scan concluído. Redes detectadas: %d\n", n);
+
+  DynamicJsonDocument doc(4096);
   JsonArray array = doc.to<JsonArray>();
   
-  for (int i = 0; i < n; ++i) {
-    JsonObject net = array.createNestedObject();
-    net["ssid"] = WiFi.SSID(i);
-    net["rssi"] = WiFi.RSSI(i);
+  if (n > 0) {
+    std::vector<String> seenSSIDs;
+    for (int i = 0; i < n; ++i) {
+      String ssid = WiFi.SSID(i);
+      if (ssid.length() == 0) continue; // Ignorar redes ocultas sem SSID
+      
+      bool alreadySeen = false;
+      for (const String& s : seenSSIDs) {
+        if (s == ssid) {
+          alreadySeen = true;
+          break;
+        }
+      }
+      if (!alreadySeen) {
+        seenSSIDs.push_back(ssid);
+        JsonObject net = array.createNestedObject();
+        net["ssid"] = ssid;
+        net["rssi"] = WiFi.RSSI(i);
+        net["secure"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+      }
+    }
+    WiFi.scanDelete();
+  }
+  
+  // Se antes estava conectado, restabelece a conexão
+  if (wasConnected && wifiConfig.wifiSsid.length() > 0) {
+    WiFi.begin(wifiConfig.wifiSsid.c_str(), wifiConfig.wifiPass.c_str());
   }
   
   String response;
   serializeJson(doc, response);
   server->send(200, "application/json", response);
-  WiFi.scanDelete();
 }
 
 void handleWifiTest() {
@@ -325,6 +380,53 @@ void handleWifiConfig() {
   preferences.putString("wifi", payload);
   server->send(200, "application/json", "{\"status\":\"success\"}");
   
+  rebootScheduled = true;
+  rebootTime = millis() + 2000;
+}
+
+void handleWifiForget() {
+  if (!checkAuthRole("Administrador")) { 
+    server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); 
+    return; 
+  }
+  
+  Serial.println("[Wi-Fi] Solicitado esquecer rede Wi-Fi...");
+  
+  // Limpar credenciais Wi-Fi da memória
+  wifiConfig.wifiSsid = "";
+  wifiConfig.wifiPass = "";
+  
+  // Atualizar NVS de preferências mantendo demais configurações salvas
+  DynamicJsonDocument doc(1024);
+  String wifiJson = preferences.getString("wifi", "");
+  if (wifiJson.length() > 0) {
+    deserializeJson(doc, wifiJson);
+  }
+  doc["wifiSsid"] = "";
+  doc["wifiPass"] = "";
+  String out;
+  serializeJson(doc, out);
+  preferences.putString("wifi", out);
+  
+  // Desconectar do roteador e apagar credenciais salvas no rádio Wi-Fi
+  WiFi.disconnect(true, true);
+  
+  // Reativar e reconfigurar o AP para garantir contingência e acesso imediato
+  WiFi.enableAP(true);
+  WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
+  
+  // Reiniciar mDNS no AP
+  MDNS.end();
+  delay(50);
+  if (MDNS.begin("inprolinksystem")) {
+    MDNS.addService("http", "tcp", wifiConfig.httpPort);
+    MDNS.addService("ws", "tcp", wifiConfig.wsPort);
+  }
+  
+  server->send(200, "application/json", "{\"status\":\"success\",\"message\":\"Rede esquecida com sucesso!\"}");
+  
+  // Agendar reinício em 2 segundos para inicialização limpa no modo AP
   rebootScheduled = true;
   rebootTime = millis() + 2000;
 }
@@ -459,8 +561,10 @@ void handleProxy() {
   
   WiFiClientSecure client;
   client.setInsecure(); // Disable HTTPS certificate check for flexibility
+  client.setTimeout(3);
   
   HTTPClient http;
+  http.setTimeout(3000);
   String url = "https://" + domain + targetPath;
   Serial.print("Proxy SSL GET: ");
   Serial.println(url);
@@ -515,8 +619,10 @@ void handleProxyPost() {
   
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(3);
   
   HTTPClient http;
+  http.setTimeout(3000);
   String url = "https://" + domain + targetPath;
   Serial.print("Proxy SSL POST: ");
   Serial.println(url);
@@ -661,8 +767,10 @@ void pollScoreboardAPI() {
   
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(2);
   
   HTTPClient http;
+  http.setTimeout(2000);
   // Use new endpoint: /api/public/matches/{partida_id}
   String url = "https://" + automationConfig.dominio + "/api/public/matches/" + urlEncode(automationConfig.partida);
   
@@ -707,12 +815,14 @@ void pollScoreboardAPI() {
     // Fallback to plain HTTP poller
     http.end();
     WiFiClient plainClient;
+    plainClient.setTimeout(2);
     String plainUrl = "http://" + automationConfig.dominio + "/api/public/matches/" + urlEncode(automationConfig.partida);
     
     Serial.print("Poller request (HTTP fallback): ");
     Serial.println(plainUrl);
     
     http.begin(plainClient, plainUrl);
+    http.setTimeout(2000);
     httpCode = http.GET();
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();

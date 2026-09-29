@@ -19,6 +19,8 @@
     .btn-inline:hover { background: #444; }
     .btn-save { background: #2e7d32; color: #fff; padding: 14px; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
     .btn-save:hover { background: #1b5e20; }
+    .btn-forget { background: #c62828; color: #fff; padding: 14px; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; text-transform: uppercase; margin-top: 10px; width: 100%; }
+    .btn-forget:hover { background: #b71c1c; }
     .nav-footer { text-align: center; margin-top: 10px; }
     .nav-footer a { color: #888; text-decoration: none; font-size: 0.9rem; }
     .nav-footer a:hover { color: #fff; }
@@ -64,6 +66,7 @@
       </div>
 
       <button type="submit" class="btn-save" style="width: 100%;">Salvar e Conectar</button>
+      <button type="button" class="btn-forget" onclick="forgetWifi()">🗑️ Esquecer Rede Wi-Fi</button>
     </form>
     
     <div class="nav-footer">
@@ -151,6 +154,38 @@
       })
       .catch(err => {
         showToast("Erro ao salvar as configurações.", "error");
+      });
+    }
+
+    function forgetWifi() {
+      if (!confirm('Deseja realmente esquecer a rede Wi-Fi configurada?\nO ESP32 desconectará da rede e reiniciará no modo Ponto de Acesso (Hotspot).')) {
+        return;
+      }
+      showToast('Esquecendo rede Wi-Fi...', 'info');
+      fetch('/api/wifi/forget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          showToast('Rede esquecida! O dispositivo reiniciará no modo Ponto de Acesso.', 'success');
+          setTimeout(() => {
+            const select = document.getElementById('wifiSsid');
+            if (select) select.innerHTML = '<option value="">Selecione uma rede...</option>';
+            const pass = document.getElementById('wifiPass');
+            if (pass) pass.value = '';
+          }, 1000);
+        } else {
+          showToast(data.error || 'Erro ao esquecer rede.', 'error');
+        }
+      })
+      .catch(err => {
+        showToast('Rede esquecida! O dispositivo desconectará e reiniciará no modo Ponto de Acesso.', 'success');
+        const select = document.getElementById('wifiSsid');
+        if (select) select.innerHTML = '<option value="">Selecione uma rede...</option>';
+        const pass = document.getElementById('wifiPass');
+        if (pass) pass.value = '';
       });
     }
 

@@ -25,6 +25,7 @@ void handleWifiStatus();
 void handleWifiScan();
 void handleWifiTest();
 void handleWifiConfig();
+void handleWifiForget();
 void handleAutomationConfig();
 void handleAutomationMode();
 void handleAutomationStatus();

@@ -7,9 +7,10 @@
 // ==========================================
 
 void setup() {
+  setCpuFrequencyMhz(240);
   Serial.begin(115200);
-  delay(100);
-  Serial.println("Iniciando Inprolink Scoreboard Controller...");
+  delay(50);
+  Serial.printf("Iniciando Inprolink Scoreboard Controller (%d MHz)...\n", getCpuFrequencyMhz());
   
   // Factory reset button pin setup
   pinMode(0, INPUT_PULLUP);
@@ -81,14 +82,14 @@ void setup() {
     automationConfig.rodada = doc["rodada"] | "";
   }
   
-  // Initialize WS2812B NeoPixel strips for the 18 digits
+  // Initialize WS2812B NeoPixel strips for the 18 digits and display 0 on all of them
+  invalidateDisplayCache();
   for (int i = 0; i < 18; i++) {
     digits[i] = new Adafruit_NeoPixel(35, digitPins[i], NEO_GRB + NEO_KHZ800);
     digits[i]->begin();
     digits[i]->setBrightness(50);
-    digits[i]->show();
+    drawDigit(i, 0, getDigitColor(i));
   }
-  updatePhysicalDisplays();
   
   // Establish WiFi access point and station mode connections
   WiFi.disconnect(true);
@@ -96,8 +97,10 @@ void setup() {
   WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
   
+  // Always use AP_STA so scanning is available even when not yet connected to a router
+  WiFi.mode(WIFI_AP_STA);
+  
   if (wifiConfig.wifiSsid.length() > 0) {
-    WiFi.mode(WIFI_AP_STA);
     if (!wifiConfig.dhcp) {
       IPAddress ip, subnet, gateway, dns;
       ip.fromString(wifiConfig.staticIp);
@@ -106,16 +109,32 @@ void setup() {
       dns.fromString(wifiConfig.staticDns);
       WiFi.config(ip, gateway, subnet, dns);
     }
+    WiFi.setAutoReconnect(true);
     WiFi.begin(wifiConfig.wifiSsid.c_str(), wifiConfig.wifiPass.c_str());
     Serial.println("Wi-Fi STA iniciando conexão...");
   } else {
-    WiFi.mode(WIFI_AP);
-    Serial.println("Wi-Fi operando somente em modo AP.");
+    Serial.println("Wi-Fi operando em modo AP (com STA habilitado para escaneamento).");
   }
   
-  // Initialize local mDNS Responder
+  // Event listener to bind mDNS as soon as the router assigns an IP
+  WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+      Serial.printf("[mDNS] IP atribuído pelo roteador: %s\n", WiFi.localIP().toString().c_str());
+      MDNS.end();
+      delay(50);
+      if (MDNS.begin("inprolinksystem")) {
+        MDNS.addService("http", "tcp", wifiConfig.httpPort);
+        MDNS.addService("ws", "tcp", wifiConfig.wsPort);
+        Serial.printf("[mDNS] Responder ativo na rede local: http://inprolinksystem.local:%d\n", wifiConfig.httpPort);
+      }
+    }
+  });
+
+  // Initialize initial mDNS Responder
   if (MDNS.begin("inprolinksystem")) {
-    Serial.println("mDNS ativo: http://inprolinksystem.local");
+    MDNS.addService("http", "tcp", wifiConfig.httpPort);
+    MDNS.addService("ws", "tcp", wifiConfig.wsPort);
+    Serial.println("mDNS inicial ativo: http://inprolinksystem.local");
   }
   
   // Start Web Server on custom HTTP port
@@ -144,6 +163,7 @@ void setup() {
   server->on("/api/wifi/scan", HTTP_GET, handleWifiScan);
   server->on("/api/wifi/test", HTTP_GET, handleWifiTest);
   server->on("/api/wifi/config", HTTP_POST, handleWifiConfig);
+  server->on("/api/wifi/forget", HTTP_POST, handleWifiForget);
   
   server->on("/api/automation/config", HTTP_POST, handleAutomationConfig);
   server->on("/api/automation/mode",   HTTP_POST, handleAutomationMode);
@@ -174,16 +194,58 @@ void loop() {
   if (server != nullptr) server->handleClient();
   if (webSocket != nullptr) webSocket->loop();
   
+  unsigned long now = millis();
+
   // Keep chronometer accurate
   if (timerRunning) {
-    unsigned long now = millis();
     if (now - timerLastMillis >= 1000) {
       unsigned long elapsedSecs = (now - timerLastMillis) / 1000;
       totalSeconds += elapsedSecs;
       timerLastMillis += elapsedSecs * 1000;
       
-      updatePhysicalDisplays();
       broadcastState();
+    }
+  }
+  
+  // Atualização periódica exclusiva dos LEDs físicos (fitas WS2812B) a cada 200 milissegundos
+  // A página web NÃO é atualizada aqui; nenhuma mensagem de rede/WebSocket é transmitida
+  static unsigned long lastLedsUpdateMillis = 0;
+  if (now - lastLedsUpdateMillis >= 200) {
+    lastLedsUpdateMillis = now;
+    updatePhysicalDisplays();
+  }
+  
+  // Ocultar/desativar a rede AP 'inprolinksystem' quando conectado ao Wi-Fi local;
+  // Reativar caso a conexão seja perdida para permitir contingência/reconfiguração
+  static bool lastConnected = false;
+  bool isConnected = (WiFi.status() == WL_CONNECTED);
+  if (isConnected != lastConnected) {
+    lastConnected = isConnected;
+    if (isConnected) {
+      Serial.printf("[Wi-Fi] Conectado com sucesso! IP local: %s\n", WiFi.localIP().toString().c_str());
+      Serial.println("[Wi-Fi] Ocultando/desativando ponto de acesso 'inprolinksystem'...");
+      WiFi.enableAP(false);
+
+      // Re-vincular mDNS ao IP da rede local
+      MDNS.end();
+      delay(50);
+      if (MDNS.begin("inprolinksystem")) {
+        MDNS.addService("http", "tcp", wifiConfig.httpPort);
+        MDNS.addService("ws", "tcp", wifiConfig.wsPort);
+        Serial.printf("[mDNS] Ativo na rede local: http://inprolinksystem.local:%d\n", wifiConfig.httpPort);
+      }
+    } else {
+      Serial.println("[Wi-Fi] Desconectado da rede local! Reativando ponto de acesso 'inprolinksystem'...");
+      WiFi.enableAP(true);
+      WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+      WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
+
+      MDNS.end();
+      delay(50);
+      if (MDNS.begin("inprolinksystem")) {
+        MDNS.addService("http", "tcp", wifiConfig.httpPort);
+        MDNS.addService("ws", "tcp", wifiConfig.wsPort);
+      }
     }
   }
   
@@ -222,10 +284,10 @@ void loop() {
     resetBtnPressed = false;
   }
   
-  // Automatic API Polling Client (every 3 seconds if active)
+  // Automatic API Polling Client (every 5 seconds if active)
   if (automationConfig.active && WiFi.status() == WL_CONNECTED) {
     unsigned long now = millis();
-    if (now - lastPollMillis >= 3000) {
+    if (now - lastPollMillis >= 5000) {
       lastPollMillis = now;
       pollScoreboardAPI();
     }
