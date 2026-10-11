@@ -143,9 +143,9 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
                            |
   +------------------------+------------------------+
   | (Placar Time A)        | (Placar Time B)        |
-  |-- GPIO 1 ---> Centena  |-- GPIO 4 ---> Centena  |
-  |-- GPIO 2 ---> Dezena   |-- GPIO 5 ---> Dezena   |
-  |-- GPIO 3 ---> Unidade  |-- GPIO 6 ---> Unidade  |
+  |-- GPIO 4 ---> Centena  |-- GPIO 1 ---> Centena  |
+  |-- GPIO 5 ---> Dezena   |-- GPIO 2 ---> Dezena   |
+  |-- GPIO 6 ---> Unidade  |-- GPIO 3 ---> Unidade  |
   +------------------------+------------------------+
   | (Faltas Time A)        | (Período)              |
   |-- GPIO 7 ---> Dezena   |-- GPIO 9 ---> Dezena   |
@@ -154,10 +154,11 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
   | (Faltas Time B)        | (Cronômetro HH:MM:SS)  |
   |-- GPIO 11 --> Dezena   |-- GPIO 13 --> Horas (D)|
   |-- GPIO 12 --> Unidade  |-- GPIO 14 --> Horas (U)|
-  +------------------------|-- GPIO 15 --> Min (D)  |
-                           |-- GPIO 16 --> Min (U)  |
-                           |-- GPIO 17 --> Seg (D)  |
-                           |-- GPIO 18 --> Seg (U)  |
+  +------------------------|-- GPIO 15 --> Fixo 5LED|
+                           |-- GPIO 16 --> Min (D)  |
+                           |-- GPIO 17 --> Min (U)  |
+                           |-- GPIO 20 --> Seg (D)  |
+                           |-- GPIO 21 --> Seg (U)  |
                            +------------------------+
 ```
 
@@ -165,12 +166,12 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
 
 | Módulo no Placar | Dígito | Posição / Função | Pino GPIO (ESP32-S3) | Qtd. LEDs |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pontos Time A** (3 dígitos: 0-999) | Dígito 0 | **Centena** | `GPIO 1` | 35 LEDs |
-| | Dígito 1 | **Dezena** | `GPIO 2` | 35 LEDs |
-| | Dígito 2 | **Unidade** | `GPIO 3` | 35 LEDs |
-| **Pontos Time B** (3 dígitos: 0-999) | Dígito 3 | **Centena** | `GPIO 4` | 35 LEDs |
-| | Dígito 4 | **Dezena** | `GPIO 5` | 35 LEDs |
-| | Dígito 5 | **Unidade** | `GPIO 6` | 35 LEDs |
+| **Pontos Time A** (3 dígitos: 0-999) | Dígito 0 | **Centena** | `GPIO 4` | 35 LEDs |
+| | Dígito 1 | **Dezena** | `GPIO 5` | 35 LEDs |
+| | Dígito 2 | **Unidade** | `GPIO 6` | 35 LEDs |
+| **Pontos Time B** (3 dígitos: 0-999) | Dígito 3 | **Centena** | `GPIO 1` | 35 LEDs |
+| | Dígito 4 | **Dezena** | `GPIO 2` | 35 LEDs |
+| | Dígito 5 | **Unidade** | `GPIO 3` | 35 LEDs |
 | **Faltas Time A** (2 dígitos: 0-99) | Dígito 6 | Dezena | `GPIO 7` | 35 LEDs |
 | | Dígito 7 | Unidade | `GPIO 8` | 35 LEDs |
 | **Período** (2 dígitos: 0-99) | Dígito 8 | Dezena | `GPIO 9` | 35 LEDs |
@@ -179,10 +180,11 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
 | | Dígito 11 | Unidade | `GPIO 12` | 35 LEDs |
 | **Cronômetro** (6 dígitos / HH:MM:SS) | Dígito 12 | Horas (Dezena) | `GPIO 13` | 35 LEDs |
 | | Dígito 13 | Horas (Unidade) | `GPIO 14` | 35 LEDs |
-| | Dígito 14 | Minutos (Dezena) | `GPIO 15` | 35 LEDs |
-| | Dígito 15 | Minutos (Unidade) | `GPIO 16` | 35 LEDs |
-| | Dígito 16 | Segundos (Dezena) | `GPIO 17` | 35 LEDs |
-| | Dígito 17 | Segundos (Unidade) | `GPIO 18` | 35 LEDs |
+| | — | Indicador / LEDs Fixos | `GPIO 15` | 5 LEDs |
+| | Dígito 14 | Minutos (Dezena) | `GPIO 16` | 35 LEDs |
+| | Dígito 15 | Minutos (Unidade) | `GPIO 17` | 35 LEDs |
+| | Dígito 16 | Segundos (Dezena) | `GPIO 20` | 35 LEDs |
+| | Dígito 17 | Segundos (Unidade) | `GPIO 21` | 35 LEDs |
 | **Reset Físico NVS** | Botão | Pressionar por 5s | `GPIO 0` (BOOT) | — |
 
 ---

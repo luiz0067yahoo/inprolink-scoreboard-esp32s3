@@ -90,6 +90,15 @@ void setup() {
     digits[i]->setBrightness(50);
     drawDigit(i, 0, getDigitColor(i));
   }
+
+  // Inicializar 5 LEDs sempre acesos na GPIO 15
+  separatorPixels = new Adafruit_NeoPixel(5, 15, NEO_GRB + NEO_KHZ800);
+  separatorPixels->begin();
+  separatorPixels->setBrightness(50);
+  for (int led = 0; led < 5; led++) {
+    separatorPixels->setPixelColor(led, 0xFFFFFF);
+  }
+  separatorPixels->show();
   
   // Establish WiFi access point and station mode connections
   WiFi.disconnect(true);

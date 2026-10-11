@@ -2,7 +2,10 @@
 
 // 18 digits, 35 pixels each (5 LEDs per segment)
 Adafruit_NeoPixel* digits[18] = {nullptr};
-const int digitPins[18] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
+const int digitPins[18] = {4, 5, 6, 1, 2, 3, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 20, 21};
+
+// Separador / LEDs fixos: 5 LEDs na GPIO 15
+Adafruit_NeoPixel* separatorPixels = nullptr;
 
 // Mapa de segmentos baseado no diagrama do hardware:
 // Bit 0 (a): Superior Esquerdo (LEDs 0-4)
@@ -40,12 +43,14 @@ uint32_t getDigitColor(int index) {
 // Cache to avoid bit-banging WS2812B strips when digit value/color hasn't changed
 static int cachedDigitVal[18] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 static uint32_t cachedDigitColor[18] = {0};
+static bool cachedSeparatorLit = false;
 
 void invalidateDisplayCache() {
   for (int i = 0; i < 18; i++) {
     cachedDigitVal[i] = -1;
     cachedDigitColor[i] = 0;
   }
+  cachedSeparatorLit = false;
 }
 
 void drawDigit(int digitIndex, int val, uint32_t color) {
@@ -110,4 +115,13 @@ void updatePhysicalDisplays() {
   drawDigit(15, mins % 10, getDigitColor(15));
   drawDigit(16, secs / 10, getDigitColor(16));
   drawDigit(17, secs % 10, getDigitColor(17));
+
+  // LED fixo / separador (5 LEDs na GPIO 15 mantidos acesos)
+  if (separatorPixels != nullptr && !cachedSeparatorLit) {
+    for (int led = 0; led < 5; led++) {
+      separatorPixels->setPixelColor(led, 0xFFFFFF);
+    }
+    separatorPixels->show();
+    cachedSeparatorLit = true;
+  }
 }
