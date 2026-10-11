@@ -50,7 +50,7 @@ O projeto combina uma interface web responsiva embarcada, resolução de nomes e
 ### 🌟 Destaques do Projeto
 
 * **Controle Independente de 18 Dígitos:** Mapeamento dedicado de 18 saídas GPIO do ESP32-S3 para renderização de pontos (3 dígitos para Time A e 3 dígitos para Time B), faltas, período e cronômetro.
-* **Acesso Simplificado:** Navegação direta por endereço IP (`192.168.4.1`) ou hostname mDNS (`http://inprolinksystem.local`).
+* **Acesso Simplificado:** Navegação direta por endereço IP (`192.168.4.1`) ou hostname mDNS (`http://placar.esportivo.local`).
 * **Autenticação Embarcada:** Sistema de login com credenciais mestre e suporte a até 10 usuários adicionais salvos na memória NVS.
 * **Consumo de API JSON:** Fluxo encadeado em 5 etapas para seleção automática da partida (Site → Modalidade → Campeonato → Partida → Rodada).
 * **Reset de Fábrica Físico:** Restauração das configurações de fábrica mantendo a GPIO 0 pressionada por 5 segundos.
@@ -67,7 +67,7 @@ Para o primeiro acesso ou após um reset de fábrica:
 
 **2. Acesso à Interface Web**
 * **Endereço IP:** `http://192.168.4.1`
-* **Hostname Direto:** `http://inprolinksystem.local` (ou `http://192.168.4.1`)
+* **Hostname Direto:** `http://placar.esportivo.local` (ou `http://192.168.4.1`)
 
 **3. Login de Administrador Padrão**
 * **Usuário:** `inprolink`
@@ -190,11 +190,11 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
 ### 📖 Manual de Configuração do Painel Web
 
 **1. Alterar Conexão Wi-Fi e Acesso via Hostname**
-1. Conecte-se à rede `inprolinksystem` e acesse `http://inprolinksystem.local`.
+1. Conecte-se à rede `inprolinksystem` e acesse `http://placar.esportivo.local`.
 2. Faça login e navegue até a seção **Conexão Wi-Fi**.
 3. Informe o **SSID** e a **Senha** do roteador local da quadra/ginásio.
 4. Clique em **Salvar e Conectar**.
-5. O ESP32-S3 se conectará ao roteador local. A partir desse momento, qualquer dispositivo na mesma rede poderá acessar o painel pelo endereço `http://inprolinksystem.local`.
+5. O ESP32-S3 se conectará ao roteador local. A partir desse momento, qualquer dispositivo na mesma rede poderá acessar o painel pelo endereço `http://placar.esportivo.local`.
 
 **2. Cadastro de até 10 Usuários no ESP32**
 1. No painel principal, acesse a aba **Gestão de Usuários**.

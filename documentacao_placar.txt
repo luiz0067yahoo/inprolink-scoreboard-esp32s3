@@ -1,0 +1,99 @@
+DOCUMENTACAO DO PLACAR ELETRONICO ESP32-S3
+
+Este documento resume como utilizar o sistema, suas rotas de API e WebSocket.
+
+=======================================================
+1. ACESSO INICIAL E CONFIGURACAO
+=======================================================
+Quando o ESP32 eh ligado pela primeira vez ou apos um reset de fabrica, 
+ele cria sua propria rede Wi-Fi (Modo Access Point).
+
+Passos para o primeiro acesso:
+1. Conecte-se a rede Wi-Fi do placar:
+   - SSID: inprolinksystem
+   - Senha: too@ajw8i67
+
+2. Abra o navegador e acesse:
+   - URL: http://192.168.4.1 ou http://placar.esportivo.local
+
+3. Faca o login com as credenciais padrao de administrador:
+   - Usuario: inprolink
+   - Senha: link@link
+
+Apos o login, voce pode acessar a aba "Conexao Wi-Fi" e conectar o placar a 
+rede local (Wi-Fi do ginasio/quadra). A partir dai, qualquer dispositivo na 
+mesma rede podera acessa-lo.
+
+=======================================================
+2. ROTAS DO SISTEMA WEB (PAGINAS)
+=======================================================
+O sistema possui uma interface web embarcada com as seguintes paginas principais:
+
+- / ou /login.html: Tela de login.
+- /painel.html: Painel principal de operacao do placar (requer login).
+- /user_adm.html: Gestao de usuarios (Apenas Administrador).
+- /lan_config.html: Configuracao de IP estatico e rede local (Apenas Administrador).
+- /ssid_config.html: Configuracao do Wi-Fi Access Point (Apenas Administrador).
+- /panel_config.html: Configuracao de integracoes de automacao de campeonatos 
+  (Apenas Gerente ou Administrador).
+
+=======================================================
+3. ENDPOINTS DA API REST
+=======================================================
+O sistema expoe rotas HTTP para comunicacao com o frontend. A maioria exige 
+autenticacao (cookie de sessao).
+
+Autenticacao:
+- POST /api/login: Recebe {"username": "...", "password": "..."} e retorna o token de sessao.
+- POST /api/logout: Limpa a sessao.
+- POST /api/factory_reset: Apaga todas as configuracoes da memoria Flash (Requer Admin).
+
+Gestao de Usuarios (Admin):
+- GET /api/users: Retorna a lista de usuarios cadastrados.
+- POST /api/users: Cria ou edita um usuario.
+- POST /api/users_delete: Remove um usuario.
+
+Configuracoes de Rede (Admin):
+- GET /api/wifi/status: Retorna o status atual do Wi-Fi (IP, MAC, Sinal, etc).
+- GET /api/wifi/scan: Escaneia as redes Wi-Fi disponiveis.
+- POST /api/wifi/config: Salva as configuracoes de Wi-Fi.
+- POST /api/wifi/forget: Esquece a rede atual e volta para o modo AP.
+
+Automacao de API (Consumo de Campeonatos):
+- GET /api/automation/status: Retorna o status da automacao.
+- POST /api/automation/mode: Altera o modo (ex: 'automatico' ou 'manual').
+- POST /api/automation/config: Salva os dados de integracao (Dominio, Campeonato, Partida, etc).
+
+=======================================================
+4. WEBSOCKET (CONTROLE EM TEMPO REAL)
+=======================================================
+O controle direto do placar (pontos, faltas, cronometro) eh feito via 
+WebSocket, garantindo atualizacao instantanea.
+
+O frontend se conecta ao WebSocket na mesma porta do servidor web.
+Ele envia comandos JSON como:
+
+Atualizar Valores (Incrementar/Decrementar):
+{
+  "action": "change",
+  "target": "score-a", // opcoes: score-a, score-b, fouls-a, fouls-b, period
+  "amount": 1 // ou -1
+}
+
+Definir Valores Exatos:
+{
+  "action": "set",
+  "target": "score-a",
+  "value": 45
+}
+
+Comandos do Cronometro:
+{
+  "action": "timer",
+  "command": "start" // opcoes: start, pause, reset, ou set (passando "value" em segundos)
+}
+
+Resetar Tudo:
+{
+  "action": "reset_all"
+}

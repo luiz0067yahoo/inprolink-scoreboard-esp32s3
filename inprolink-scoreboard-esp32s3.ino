@@ -122,19 +122,19 @@ void setup() {
       Serial.printf("[mDNS] IP atribuído pelo roteador: %s\n", WiFi.localIP().toString().c_str());
       MDNS.end();
       delay(50);
-      if (MDNS.begin("inprolinksystem")) {
+      if (MDNS.begin("placar.esportivo")) {
         MDNS.addService("http", "tcp", wifiConfig.httpPort);
         MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-        Serial.printf("[mDNS] Responder ativo na rede local: http://inprolinksystem.local:%d\n", wifiConfig.httpPort);
+        Serial.printf("[mDNS] Responder ativo na rede local: http://placar.esportivo.local:%d\n", wifiConfig.httpPort);
       }
     }
   });
 
   // Initialize initial mDNS Responder
-  if (MDNS.begin("inprolinksystem")) {
+  if (MDNS.begin("placar.esportivo")) {
     MDNS.addService("http", "tcp", wifiConfig.httpPort);
     MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-    Serial.println("mDNS inicial ativo: http://inprolinksystem.local");
+    Serial.println("mDNS inicial ativo: http://placar.esportivo.local");
   }
   
   // Start Web Server on custom HTTP port
@@ -229,10 +229,10 @@ void loop() {
       // Re-vincular mDNS ao IP da rede local
       MDNS.end();
       delay(50);
-      if (MDNS.begin("inprolinksystem")) {
+      if (MDNS.begin("placar.esportivo")) {
         MDNS.addService("http", "tcp", wifiConfig.httpPort);
         MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-        Serial.printf("[mDNS] Ativo na rede local: http://inprolinksystem.local:%d\n", wifiConfig.httpPort);
+        Serial.printf("[mDNS] Ativo na rede local: http://placar.esportivo.local:%d\n", wifiConfig.httpPort);
       }
     } else {
       Serial.println("[Wi-Fi] Desconectado da rede local! Reativando ponto de acesso 'inprolinksystem'...");
@@ -242,7 +242,7 @@ void loop() {
 
       MDNS.end();
       delay(50);
-      if (MDNS.begin("inprolinksystem")) {
+      if (MDNS.begin("placar.esportivo")) {
         MDNS.addService("http", "tcp", wifiConfig.httpPort);
         MDNS.addService("ws", "tcp", wifiConfig.wsPort);
       }
@@ -284,10 +284,10 @@ void loop() {
     resetBtnPressed = false;
   }
   
-  // Automatic API Polling Client (every 5 seconds if active)
+  // Automatic API Polling Client (every 3 seconds if active)
   if (automationConfig.active && WiFi.status() == WL_CONNECTED) {
     unsigned long now = millis();
-    if (now - lastPollMillis >= 5000) {
+    if (now - lastPollMillis >= 3000) {
       lastPollMillis = now;
       pollScoreboardAPI();
     }

@@ -419,7 +419,7 @@ void handleWifiForget() {
   // Reiniciar mDNS no AP
   MDNS.end();
   delay(50);
-  if (MDNS.begin("inprolinksystem")) {
+  if (MDNS.begin("placar.esportivo")) {
     MDNS.addService("http", "tcp", wifiConfig.httpPort);
     MDNS.addService("ws", "tcp", wifiConfig.wsPort);
   }
@@ -762,7 +762,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
 void pollScoreboardAPI() {
   if (!automationConfig.active || automationConfig.mode != "automatico") return;
-  if (millis() - lastPollMillis < 5000) return;
+  if (millis() - lastPollMillis < 3000) return;
   lastPollMillis = millis();
   
   WiFiClientSecure client;
@@ -781,7 +781,7 @@ void pollScoreboardAPI() {
   int httpCode = http.GET();
   
   auto processResponse = [&](String payload) {
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(4096);
     DeserializationError error = deserializeJson(doc, payload);
     if (!error) {
       if (doc.containsKey("match")) {
@@ -789,19 +789,85 @@ void pollScoreboardAPI() {
         scoreB = doc["match"]["away_score"] | 0;
       }
       
-      // Attempt to find timer in details (assuming it might be sync_timer)
+      // Sincronização inteligente do cronômetro
       if (doc.containsKey("details") && doc["details"].containsKey("sync_timer")) {
-        const char* timerStr = doc["details"]["sync_timer"] | "00:00:00";
-        int h = 0, m = 0, s = 0;
-        sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
-        totalSeconds = h * 3600 + m * 60 + s;
+        int serverTime = totalSeconds;
+        bool serverRunning = timerRunning;
+        bool hasTimer = false;
+
+        if (doc["details"]["sync_timer"].is<JsonObject>()) {
+          JsonObject st = doc["details"]["sync_timer"].as<JsonObject>();
+          if (st.containsKey("time")) {
+            serverTime = st["time"].as<int>();
+            hasTimer = true;
+          }
+          if (st.containsKey("isRunning")) {
+            serverRunning = st["isRunning"].as<bool>();
+          } else if (st.containsKey("running")) {
+            serverRunning = st["running"].as<bool>();
+          }
+          if (st.containsKey("currentPeriod")) {
+            if (st["currentPeriod"].is<int>()) {
+              period = st["currentPeriod"].as<int>();
+            } else if (st["currentPeriod"].is<const char*>()) {
+              const char* pStr = st["currentPeriod"].as<const char*>();
+              int pNum = 0;
+              if (sscanf(pStr, "%d", &pNum) > 0) period = pNum;
+            }
+          }
+        } else if (doc["details"]["sync_timer"].is<int>()) {
+          serverTime = doc["details"]["sync_timer"].as<int>();
+          hasTimer = true;
+        } else if (doc["details"]["sync_timer"].is<const char*>()) {
+          const char* timerStr = doc["details"]["sync_timer"].as<const char*>();
+          int h = 0, m = 0, s = 0;
+          int parts = sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
+          if (parts == 3) {
+            serverTime = h * 3600 + m * 60 + s;
+            hasTimer = true;
+          } else if (parts == 2) {
+            serverTime = h * 60 + m;
+            hasTimer = true;
+          } else if (parts == 1) {
+            serverTime = h;
+            hasTimer = true;
+          }
+        }
+
+        if (hasTimer) {
+          timerRunning = serverRunning;
+          
+          if (!serverRunning) {
+            // Se pausado ou parado, ajusta exatamente o tempo do servidor
+            totalSeconds = serverTime;
+          } else {
+            // Se rodando: só corrige o tempo local se o desvio for maior que 2 segundos.
+            // Nas verificações normais apenas confirma e deixa o ESP32 rodar segundo a segundo lisinho!
+            long diff = (long)totalSeconds - (long)serverTime;
+            if (diff < -2 || diff > 2) {
+              totalSeconds = serverTime;
+            }
+          }
+        }
       }
       
-      // Calculate fouls based on events if needed, but for now we reset them 
-      // since they are not directly on match in new backend format.
-      // (Could iterate over doc["details"]["events"] and count fouls per team if required)
-      foulsA = 0;
-      foulsB = 0;
+      // Contagem de faltas a partir dos eventos (tiro_livre, tiro_7m, foul)
+      if (doc.containsKey("details") && doc["details"].containsKey("events") && doc["details"]["events"].is<JsonArray>()) {
+        int homeId = doc["match"]["home_team_id"] | 0;
+        int awayId = doc["match"]["away_team_id"] | 0;
+        int fA = 0;
+        int fB = 0;
+        for (JsonObject ev : doc["details"]["events"].as<JsonArray>()) {
+          const char* type = ev["type"] | "";
+          if (strcmp(type, "foul") == 0 || strcmp(type, "tiro_livre") == 0 || strcmp(type, "tiro_7m") == 0) {
+            int tId = ev["team_id"] | 0;
+            if (tId == homeId) fA++;
+            else if (tId == awayId) fB++;
+          }
+        }
+        foulsA = fA;
+        foulsB = fB;
+      }
       
       updatePhysicalDisplays();
       broadcastState();
