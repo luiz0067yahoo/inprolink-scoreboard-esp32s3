@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wizard de Configuração Geral - Inprolink System</title>
+  <title>Wizard de Configuração Geral - Esporte7 System</title>
   <style>
     * {
       box-sizing: border-box;
@@ -340,7 +340,7 @@
       </div>
       <div class="input-group">
         <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
-        <input type="text" id="domainInput" class="input-field" placeholder="Ex: placar.inprolink.com.br ou 192.168.1.100" value="placar.inprolink.com.br">
+        <input type="text" id="domainInput" class="input-field" placeholder="Ex: https://esporte7.com.br/ ou 192.168.1.100" value="https://esporte7.com.br/">
       </div>
     </div>
 
@@ -460,7 +460,7 @@
       
       <div class="input-group">
         <label>Endereço do Domínio / IP (Opcional)</label>
-        <input type="text" id="manual_dominio" class="input-field" value="placar.inprolink.com.br">
+        <input type="text" id="manual_dominio" class="input-field" value="https://esporte7.com.br/">
       </div>
       <div class="input-group">
         <label>Modalidade</label>
@@ -537,7 +537,7 @@
 
     // Estado da seleção do Wizard
     const wizardData = {
-      dominio: 'placar.inprolink.com.br',
+      dominio: 'https://esporte7.com.br/',
       modalidade: '',
       campeonato: '',
       partida: '',
@@ -775,7 +775,7 @@
       })
       .catch(err => {
         console.warn('API offline, salvando localmente...', err);
-        localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
+        localStorage.setItem('esporte7_wizard_setup', JSON.stringify(wizardData));
         showToast('Configuração concluída (Simulado)!', 'success');
         window.location.href = 'painel.html';
       });

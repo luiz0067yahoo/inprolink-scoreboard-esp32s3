@@ -10,7 +10,7 @@ void setup() {
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
   delay(50);
-  Serial.printf("Iniciando Inprolink Scoreboard Controller (%d MHz)...\n", getCpuFrequencyMhz());
+  Serial.printf("Iniciando Esporte7 Scoreboard Controller (%d MHz)...\n", getCpuFrequencyMhz());
   
   // Factory reset button pin setup
   pinMode(0, INPUT_PULLUP);
@@ -21,7 +21,7 @@ void setup() {
   // Initialize users NVS list if empty
   String usersJson = preferences.getString("users", "");
   if (usersJson == "") {
-    usersJson = "[{\"name\":\"Administrador Inprolink\",\"username\":\"inprolink\",\"pass\":\"link@link\",\"role\":\"Administrador\"}]";
+    usersJson = "[{\"name\":\"Administrador Esporte7\",\"username\":\"esporte7\",\"pass\":\"link@link\",\"role\":\"Administrador\"}]";
     preferences.putString("users", usersJson);
   }
   
@@ -35,7 +35,7 @@ void setup() {
     wifiConfig.staticSubnet = "255.255.255.0";
     wifiConfig.staticGateway = "192.168.1.1";
     wifiConfig.staticDns = "8.8.8.8";
-    wifiConfig.apSsid = "inprolinksystem";
+    wifiConfig.apSsid = "esporte7system";
     wifiConfig.apPass = "too@ajw8i67";
     wifiConfig.apChannel = 6;
     wifiConfig.httpPort = 80;
@@ -51,7 +51,7 @@ void setup() {
     wifiConfig.staticSubnet = doc["staticSubnet"] | "255.255.255.0";
     wifiConfig.staticGateway = doc["staticGateway"] | "192.168.1.1";
     wifiConfig.staticDns = doc["staticDns"] | "8.8.8.8";
-    wifiConfig.apSsid = doc["apSsid"] | "inprolinksystem";
+    wifiConfig.apSsid = doc["apSsid"] | "esporte7system";
     wifiConfig.apPass = doc["apPass"] | "too@ajw8i67";
     wifiConfig.apChannel = doc["apChannel"] | 6;
     wifiConfig.httpPort = doc["httpPort"] | 80;
@@ -63,7 +63,7 @@ void setup() {
   if (autJson == "") {
     automationConfig.active = false;
     automationConfig.mode = "automatico";
-    automationConfig.dominio = "placar.inprolink.com.br";
+    automationConfig.dominio = "esporte7.com.br";
     automationConfig.modalidade = "";
     automationConfig.campeonato = "";
     automationConfig.partida = "";
@@ -74,7 +74,7 @@ void setup() {
     deserializeJson(doc, autJson);
     automationConfig.active = doc["active"] | false;
     automationConfig.mode = doc["mode"] | "automatico";
-    automationConfig.dominio = doc["dominio"] | "placar.inprolink.com.br";
+    automationConfig.dominio = cleanDomain(doc["dominio"] | "esporte7.com.br");
     automationConfig.modalidade = doc["modalidade"] | "";
     automationConfig.campeonato = doc["campeonato"] | "";
     automationConfig.partida = doc["partida"] | "";
@@ -224,7 +224,7 @@ void loop() {
     updatePhysicalDisplays();
   }
   
-  // Ocultar/desativar a rede AP 'inprolinksystem' quando conectado ao Wi-Fi local;
+  // Ocultar/desativar a rede AP 'esporte7system' quando conectado ao Wi-Fi local;
   // Reativar caso a conexão seja perdida para permitir contingência/reconfiguração
   static bool lastConnected = false;
   bool isConnected = (WiFi.status() == WL_CONNECTED);
@@ -232,7 +232,7 @@ void loop() {
     lastConnected = isConnected;
     if (isConnected) {
       Serial.printf("[Wi-Fi] Conectado com sucesso! IP local: %s\n", WiFi.localIP().toString().c_str());
-      Serial.println("[Wi-Fi] Ocultando/desativando ponto de acesso 'inprolinksystem'...");
+      Serial.println("[Wi-Fi] Ocultando/desativando ponto de acesso 'esporte7system'...");
       WiFi.enableAP(false);
 
       // Re-vincular mDNS ao IP da rede local
@@ -244,7 +244,7 @@ void loop() {
         Serial.printf("[mDNS] Ativo na rede local: http://placar.esportivo.local:%d\n", wifiConfig.httpPort);
       }
     } else {
-      Serial.println("[Wi-Fi] Desconectado da rede local! Reativando ponto de acesso 'inprolinksystem'...");
+      Serial.println("[Wi-Fi] Desconectado da rede local! Reativando ponto de acesso 'esporte7system'...");
       WiFi.enableAP(true);
       WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
       WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);

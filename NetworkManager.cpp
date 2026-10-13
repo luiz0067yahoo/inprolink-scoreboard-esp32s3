@@ -132,7 +132,7 @@ void handleLogin() {
       authenticated = true;
       if (user.containsKey("role")) {
         userRole = user["role"].as<String>();
-      } else if (strcmp(username, "inprolink") == 0) {
+      } else if (strcmp(username, "esporte7") == 0) {
         userRole = "Administrador";
       }
       break;
@@ -455,7 +455,7 @@ void handleAutomationConfig() {
   // Reload local automation configs
   automationConfig.active = doc["active"] | false;
   automationConfig.mode = doc["mode"] | "automatico";
-  automationConfig.dominio = doc["dominio"] | "placar.inprolink.com.br";
+  automationConfig.dominio = cleanDomain(doc["dominio"] | "esporte7.com.br");
   automationConfig.modalidade = doc["modalidade"] | "";
   automationConfig.campeonato = doc["campeonato"] | "";
   automationConfig.partida = doc["partida"] | "";
@@ -537,10 +537,18 @@ String urlEncode(String str) {
   return encodedString;
 }
 
+String cleanDomain(String d) {
+  d.trim();
+  if (d.startsWith("https://")) d = d.substring(8);
+  else if (d.startsWith("http://")) d = d.substring(7);
+  while (d.endsWith("/")) d = d.substring(0, d.length() - 1);
+  return d;
+}
+
 // Proxy Endpoint to Query External Domain from ESP32 to prevent CORS issues
 void handleProxy() {
   if (!checkAuthRole("Gerente")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
-  String domain = server->arg("domain");
+  String domain = cleanDomain(server->arg("domain"));
   if (domain == "") {
     server->send(400, "application/json", "{\"error\":\"domain is required\"}");
     return;
@@ -595,7 +603,7 @@ void handleProxy() {
 // Proxy Endpoint for POST Requests
 void handleProxyPost() {
   if (!checkAuthRole("Gerente")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
-  String domain = server->arg("domain");
+  String domain = cleanDomain(server->arg("domain"));
   if (domain == "") {
     server->send(400, "application/json", "{\"error\":\"domain is required\"}");
     return;
@@ -771,8 +779,9 @@ void pollScoreboardAPI() {
   
   HTTPClient http;
   http.setTimeout(2000);
+  String cleanDom = cleanDomain(automationConfig.dominio);
   // Use new endpoint: /api/public/matches/{partida_id}
-  String url = "https://" + automationConfig.dominio + "/api/public/matches/" + urlEncode(automationConfig.partida);
+  String url = "https://" + cleanDom + "/api/public/matches/" + urlEncode(automationConfig.partida);
   
   Serial.print("Poller request (SSL): ");
   Serial.println(url);
@@ -882,7 +891,7 @@ void pollScoreboardAPI() {
     http.end();
     WiFiClient plainClient;
     plainClient.setTimeout(2);
-    String plainUrl = "http://" + automationConfig.dominio + "/api/public/matches/" + urlEncode(automationConfig.partida);
+    String plainUrl = "http://" + cleanDom + "/api/public/matches/" + urlEncode(automationConfig.partida);
     
     Serial.print("Poller request (HTTP fallback): ");
     Serial.println(plainUrl);

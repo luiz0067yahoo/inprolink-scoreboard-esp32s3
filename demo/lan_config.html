@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Configuração de Rede - Inprolink System</title>
+  <title>Configuração de Rede - Esporte7 System</title>
   <style>
     * {
       box-sizing: border-box;
@@ -483,12 +483,12 @@
 
       <div class="input-group">
         <label>Nome do AP (SSID)</label>
-        <input type="text" id="apSsid" class="input-field" value="INPROLINK-PLACAR-AP">
+        <input type="text" id="apSsid" class="input-field" value="ESPORTE7-PLACAR-AP">
       </div>
 
       <div class="input-group">
         <label>Senha do AP</label>
-        <input type="text" id="apPass" class="input-field" value="inprolink123" placeholder="Mínimo 8 caracteres">
+        <input type="text" id="apPass" class="input-field" value="esporte7123" placeholder="Mínimo 8 caracteres">
       </div>
 
       <div class="grid-2col">
@@ -645,7 +645,7 @@
       .catch(err => {
         console.warn('API offline, usando fallback local de visualização...', err);
         // Fallback local caso carregue estático
-        const saved = localStorage.getItem('inprolink_wifi_config');
+        const saved = localStorage.getItem('esporte7_wifi_config');
         if (saved) {
           const config = JSON.parse(saved);
           document.getElementById('wifiSsid').value = config.ssid;
@@ -776,7 +776,7 @@
         // Fallback simulação para teste local / GitHub pages
         populateWifiList([
           { ssid: 'Clube_Membros', rssi: -64, secure: true },
-          { ssid: 'Inprolink_Tech', rssi: -72, secure: true },
+          { ssid: 'Esporte7_Tech', rssi: -72, secure: true },
           { ssid: 'TFC_Visitantes', rssi: -80, secure: false }
         ], currentSelected);
         showToast('Busca concluída! Redes carregadas.', 'success');
@@ -840,7 +840,7 @@
       })
       .catch(error => {
         console.warn('API offline, simulando salvamento...', error);
-        localStorage.setItem('inprolink_wifi_config', JSON.stringify({
+        localStorage.setItem('esporte7_wifi_config', JSON.stringify({
           ssid: config.wifiSsid,
           dhcp: config.dhcp,
           staticIp: config.staticIp,
@@ -876,11 +876,11 @@
       })
       .catch(err => {
         console.warn('API offline, simulando esquecimento...', err);
-        const saved = localStorage.getItem('inprolink_wifi_config');
+        const saved = localStorage.getItem('esporte7_wifi_config');
         if (saved) {
           const cfg = JSON.parse(saved);
           cfg.ssid = '';
-          localStorage.setItem('inprolink_wifi_config', JSON.stringify(cfg));
+          localStorage.setItem('esporte7_wifi_config', JSON.stringify(cfg));
         }
         showToast('Rede esquecida! O dispositivo desconectará e reiniciará no modo Ponto de Acesso.', 'success');
         const select = document.getElementById('wifiSsid');

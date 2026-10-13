@@ -30,6 +30,7 @@ void handleAutomationConfig();
 void handleAutomationMode();
 void handleAutomationStatus();
 String urlEncode(String str);
+String cleanDomain(String d);
 void handleProxy();
 void handleProxyPost();
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);

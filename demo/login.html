@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login Administrador - Inprolink System</title>
+  <title>Login Administrador - Esporte7 System</title>
   <style>
     * {
       box-sizing: border-box;
@@ -211,7 +211,7 @@
     <div class="brand-header">
       <div class="brand-logo">
       </div>
-      <div class="brand-title">INPROLINK</div>
+      <div class="brand-title">ESPORTE7</div>
       <div class="brand-subtitle">Acesso Administrador</div>
     </div>
 
@@ -273,7 +273,7 @@
       })
       .catch(error => {
         console.warn('API offline. Tentando login local fallback...', error);
-        if (userVal === 'inprolink' && passVal === 'link@link') {
+        if (userVal === 'esporte7' && passVal === 'link@link') {
           errorMsg.classList.remove('active');
           sessionStorage.setItem('authenticated', 'true');
           sessionStorage.setItem('role', 'Administrador');

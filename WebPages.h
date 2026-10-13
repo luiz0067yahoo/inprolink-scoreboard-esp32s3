@@ -13,7 +13,7 @@ const char login_html[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login Administrador - Inprolink System</title>
+  <title>Login Administrador - Esporte7 System</title>
 
   <style>
     * {
@@ -222,7 +222,7 @@ const char login_html[] PROGMEM = R"rawliteral(
     <div class="brand-header">
       <div class="brand-logo">
       </div>
-      <div class="brand-title">INPROLINK</div>
+      <div class="brand-title">ESPORTE7</div>
       <div class="brand-subtitle">Acesso Administrador</div>
     </div>
 
@@ -284,7 +284,7 @@ const char login_html[] PROGMEM = R"rawliteral(
       })
       .catch(error => {
         console.warn('API offline. Tentando login local fallback...', error);
-        if (userVal === 'inprolink' && passVal === 'link@link') {
+        if (userVal === 'esporte7' && passVal === 'link@link') {
           errorMsg.classList.remove('active');
           sessionStorage.setItem('authenticated', 'true');
           sessionStorage.setItem('role', 'Administrador');
@@ -305,7 +305,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestão de Usuários - Inprolink System</title>
+  <title>Gestão de Usuários - Esporte7 System</title>
 
   <style>
     * {
@@ -716,7 +716,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
         let roleClass = 'role-operator';
         if (u.role === 'Administrador') roleClass = 'role-admin';
         else if (u.role === 'Gerente') roleClass = 'role-manager';
-        const isDefaultAdmin = u.username === 'inprolink';
+        const isDefaultAdmin = u.username === 'esporte7';
 
         item.innerHTML = `
           <div class="user-info">
@@ -756,8 +756,8 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
       })
       .catch(err => {
         console.warn('API offline, usando fallback local...', err);
-        users = JSON.parse(localStorage.getItem('inprolink_users')) || [
-          { name: 'Administrador Inprolink', username: 'inprolink', pass: 'link@link', role: 'Administrador' }
+        users = JSON.parse(localStorage.getItem('esporte7_users')) || [
+          { name: 'Administrador Esporte7', username: 'esporte7', pass: 'link@link', role: 'Administrador' }
         ];
         render();
       });
@@ -805,7 +805,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
         } else {
           users[idx] = { name, username, role };
         }
-        localStorage.setItem('inprolink_users', JSON.stringify(users));
+        localStorage.setItem('esporte7_users', JSON.stringify(users));
         render();
         resetForm();
       });
@@ -826,7 +826,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
     }
 
     function deleteUser(idx) {
-      if (users[idx].username === 'inprolink') {
+      if (users[idx].username === 'esporte7') {
         showToast('O usuário administrador padrão não pode ser removido.', 'error');
         return;
       }
@@ -849,7 +849,7 @@ const char user_adm_html[] PROGMEM = R"rawliteral(
         .catch(error => {
           console.warn('API offline, removendo localmente...', error);
           users.splice(idx, 1);
-          localStorage.setItem('inprolink_users', JSON.stringify(users));
+          localStorage.setItem('esporte7_users', JSON.stringify(users));
           render();
           resetForm();
         });
@@ -877,7 +877,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Configuração de Rede - Inprolink System</title>
+  <title>Configuração de Rede - Esporte7 System</title>
 
   <style>
     * {
@@ -1358,12 +1358,12 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
 
       <div class="input-group">
         <label>Nome do AP (SSID)</label>
-        <input type="text" id="apSsid" class="input-field" value="INPROLINK-PLACAR-AP">
+        <input type="text" id="apSsid" class="input-field" value="ESPORTE7-PLACAR-AP">
       </div>
 
       <div class="input-group">
         <label>Senha do AP</label>
-        <input type="text" id="apPass" class="input-field" value="inprolink123" placeholder="Mínimo 8 caracteres">
+        <input type="text" id="apPass" class="input-field" value="esporte7123" placeholder="Mínimo 8 caracteres">
       </div>
 
       <div class="grid-2col">
@@ -1519,7 +1519,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       })
       .catch(err => {
         console.warn('API offline, usando fallback local de visualização...', err);
-        const saved = localStorage.getItem('inprolink_wifi_config');
+        const saved = localStorage.getItem('esporte7_wifi_config');
         if (saved) {
           const config = JSON.parse(saved);
           document.getElementById('wifiSsid').value = config.ssid;
@@ -1650,7 +1650,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
         if (window.location.protocol === 'file:' || window.location.hostname.includes('github.io')) {
           populateWifiList([
             { ssid: 'Clube_Membros', rssi: -64, secure: true },
-            { ssid: 'Inprolink_Tech', rssi: -72, secure: true },
+            { ssid: 'Esporte7_Tech', rssi: -72, secure: true },
             { ssid: 'TFC_Visitantes', rssi: -80, secure: false }
           ], currentSelected);
           showToast('Busca concluída! 3 redes simuladas (Modo Demo).', 'success');
@@ -1717,7 +1717,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       })
       .catch(error => {
         console.warn('API offline, simulando salvamento...', error);
-        localStorage.setItem('inprolink_wifi_config', JSON.stringify({
+        localStorage.setItem('esporte7_wifi_config', JSON.stringify({
           ssid: config.wifiSsid,
           dhcp: config.dhcp,
           staticIp: config.staticIp,
@@ -1753,11 +1753,11 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       })
       .catch(err => {
         console.warn('API offline, simulando esquecimento...', err);
-        const saved = localStorage.getItem('inprolink_wifi_config');
+        const saved = localStorage.getItem('esporte7_wifi_config');
         if (saved) {
           const cfg = JSON.parse(saved);
           cfg.ssid = '';
-          localStorage.setItem('inprolink_wifi_config', JSON.stringify(cfg));
+          localStorage.setItem('esporte7_wifi_config', JSON.stringify(cfg));
         }
         showToast('Rede esquecida! O dispositivo desconectará e reiniciará no modo Ponto de Acesso.', 'success');
         const select = document.getElementById('wifiSsid');
@@ -1780,7 +1780,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wizard de Configuração Geral - Inprolink System</title>
+  <title>Wizard de Configuração Geral - Esporte7 System</title>
 
   <style>
     * {
@@ -2110,7 +2110,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </div>
       <div class="input-group">
         <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
-        <input type="text" id="domainInput" class="input-field" placeholder="Ex: placar.inprolink.com.br ou 192.168.1.100" value="placar.inprolink.com.br">
+        <input type="text" id="domainInput" class="input-field" placeholder="Ex: https://esporte7.com.br/ ou 192.168.1.100" value="https://esporte7.com.br/">
       </div>
     </div>
 
@@ -2247,7 +2247,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     // Estado da seleção do Wizard
     const wizardData = {
-      dominio: 'placar.inprolink.com.br',
+      dominio: 'https://esporte7.com.br/',
       modalidade: '',
       campeonato: '',
       partida: ''
@@ -2443,7 +2443,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       })
       .catch(err => {
         console.warn('API offline, salvando localmente...', err);
-        localStorage.setItem('inprolink_wizard_setup', JSON.stringify(wizardData));
+        localStorage.setItem('esporte7_wizard_setup', JSON.stringify(wizardData));
         showToast('Configuração concluída (Simulado)!', 'success');
         window.location.href = 'painel.html';
       });
@@ -2483,7 +2483,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Placar Eletrônico - Inprolink System</title>
+  <title>Placar Eletrônico - Esporte7 System</title>
 
   <style>
     * {
