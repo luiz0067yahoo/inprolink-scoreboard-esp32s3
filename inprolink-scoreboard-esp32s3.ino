@@ -191,6 +191,13 @@ void setup() {
   
   // POST routes for pushing data (gols, updates)
   server->on("/api/proxy_post/gols", HTTP_POST, handleProxyPost);
+  
+  // Placar: atualização automática via AJAX (HTTP GET) e comandos (HTTP POST)
+  server->on("/api/scoreboard/state", HTTP_GET, handleScoreboardState);
+  server->on("/api/scoreboard", HTTP_GET, handleScoreboardState);
+  server->on("/api/state", HTTP_GET, handleScoreboardState);
+  server->on("/api/scoreboard/action", HTTP_POST, handleScoreboardAction);
+  
   // Captive Portal / 404 fallback redirect
   server->onNotFound([]() {
     String host = server->hostHeader();
@@ -231,10 +238,10 @@ void loop() {
     }
   }
   
-  // Atualização periódica exclusiva dos LEDs físicos (fitas WS2812B) a cada 200 milissegundos
+  // Atualização periódica exclusiva dos sinais nas portas I/O (fitas WS2812B) a cada 250 milissegundos
   // A página web NÃO é atualizada aqui; nenhuma mensagem de rede/WebSocket é transmitida
   static unsigned long lastLedsUpdateMillis = 0;
-  if (now - lastLedsUpdateMillis >= 200) {
+  if (now - lastLedsUpdateMillis >= 250) {
     lastLedsUpdateMillis = now;
     updatePhysicalDisplays();
   }

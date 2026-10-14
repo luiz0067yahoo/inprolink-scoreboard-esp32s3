@@ -660,6 +660,115 @@ void handleProxyPost() {
 }
 
 // ==========================================
+// Scoreboard State & Action HTTP Endpoints (AJAX)
+// ==========================================
+
+void handleScoreboardState() {
+  DynamicJsonDocument doc(256);
+  doc["type"] = "state";
+  doc["scoreA"] = scoreA;
+  doc["scoreB"] = scoreB;
+  doc["foulsA"] = foulsA;
+  doc["foulsB"] = foulsB;
+  doc["period"] = period;
+  
+  char timerStr[16];
+  int hrs = totalSeconds / 3600;
+  int mins = (totalSeconds % 3600) / 60;
+  int secs = totalSeconds % 60;
+  sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
+  doc["timer"] = timerStr;
+  doc["timerRunning"] = timerRunning;
+  doc["totalSeconds"] = totalSeconds;
+  
+  String json;
+  serializeJson(doc, json);
+  server->send(200, "application/json", json);
+}
+
+void handleScoreboardAction() {
+  if (!server->hasArg("plain")) {
+    server->send(400, "application/json", "{\"error\":\"Missing payload\"}");
+    return;
+  }
+  
+  DynamicJsonDocument doc(512);
+  DeserializationError error = deserializeJson(doc, server->arg("plain"));
+  if (error) {
+    server->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+    return;
+  }
+  
+  // Automation is overridden by manual adjustments
+  if (automationConfig.active) {
+    automationConfig.active = false;
+    String autJson = preferences.getString("automation", "");
+    if (autJson != "") {
+      DynamicJsonDocument autDoc(512);
+      deserializeJson(autDoc, autJson);
+      autDoc["active"] = false;
+      String updatedAut;
+      serializeJson(autDoc, updatedAut);
+      preferences.putString("automation", updatedAut);
+    }
+  }
+  
+  const char* action = doc["action"];
+  if (action) {
+    if (strcmp(action, "change") == 0) {
+      const char* target = doc["target"];
+      int amount = doc["amount"] | 0;
+      if (strcmp(target, "score-a") == 0) scoreA = constrain(scoreA + amount, 0, 999);
+      else if (strcmp(target, "score-b") == 0) scoreB = constrain(scoreB + amount, 0, 999);
+      else if (strcmp(target, "fouls-a") == 0) foulsA = constrain(foulsA + amount, 0, 99);
+      else if (strcmp(target, "fouls-b") == 0) foulsB = constrain(foulsB + amount, 0, 99);
+      else if (strcmp(target, "period") == 0) period = constrain(period + amount, 0, 99);
+      updatePhysicalDisplays();
+      broadcastState();
+    } else if (strcmp(action, "set") == 0) {
+      const char* target = doc["target"];
+      int value = doc["value"] | 0;
+      if (strcmp(target, "score-a") == 0) scoreA = constrain(value, 0, 999);
+      else if (strcmp(target, "score-b") == 0) scoreB = constrain(value, 0, 999);
+      else if (strcmp(target, "fouls-a") == 0) foulsA = constrain(value, 0, 99);
+      else if (strcmp(target, "fouls-b") == 0) foulsB = constrain(value, 0, 99);
+      else if (strcmp(target, "period") == 0) period = constrain(value, 0, 99);
+      updatePhysicalDisplays();
+      broadcastState();
+    } else if (strcmp(action, "timer") == 0) {
+      const char* command = doc["command"];
+      if (strcmp(command, "start") == 0) {
+        timerRunning = true;
+        timerLastMillis = millis();
+      } else if (strcmp(command, "pause") == 0) {
+        timerRunning = false;
+      } else if (strcmp(command, "reset") == 0) {
+        timerRunning = false;
+        totalSeconds = 0;
+      } else if (strcmp(command, "set") == 0) {
+        timerRunning = false;
+        totalSeconds = doc["value"] | 0;
+        if (totalSeconds < 0) totalSeconds = 0;
+      }
+      updatePhysicalDisplays();
+      broadcastState();
+    } else if (strcmp(action, "reset_all") == 0) {
+      scoreA = 0;
+      scoreB = 0;
+      foulsA = 0;
+      foulsB = 0;
+      period = 0;
+      timerRunning = false;
+      totalSeconds = 0;
+      updatePhysicalDisplays();
+      broadcastState();
+    }
+  }
+  
+  handleScoreboardState();
+}
+
+// ==========================================
 // WebSocket Frame Event Handler
 // ==========================================
 

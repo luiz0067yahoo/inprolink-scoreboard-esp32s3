@@ -64,6 +64,10 @@ Automacao de API (Consumo de Campeonatos):
 - POST /api/automation/mode: Altera o modo (ex: 'automatico' ou 'manual').
 - POST /api/automation/config: Salva os dados de integracao (Dominio, Campeonato, Partida, etc).
 
+Placar (Atualizacao Automatica via AJAX / REST):
+- GET /api/scoreboard/state (ou /api/scoreboard): Retorna em JSON o estado atual do placar (scoreA, scoreB, foulsA, foulsB, period, timer, timerRunning, totalSeconds). Chamado a cada 1 segundo (1000ms) pelo Javascript da interface web sem recarregar a pagina.
+- POST /api/scoreboard/action: Permite enviar comandos via HTTP JSON (change, set, timer, reset_all) com resposta imediata do novo estado.
+
 =======================================================
 4. WEBSOCKET (CONTROLE EM TEMPO REAL)
 =======================================================

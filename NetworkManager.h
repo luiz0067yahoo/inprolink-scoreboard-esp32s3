@@ -33,6 +33,8 @@ String urlEncode(String str);
 String cleanDomain(String d);
 void handleProxy();
 void handleProxyPost();
+void handleScoreboardState();
+void handleScoreboardAction();
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length);
 
 #endif // NETWORK_MANAGER_H

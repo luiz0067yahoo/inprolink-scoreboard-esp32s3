@@ -2983,9 +2983,81 @@ const char painel_html[] PROGMEM = R"rawliteral(
     }
 
     let ws = null;
-    let timerInterval = null;
     let totalSeconds = 0;
     let swapped = false;
+    let currentPanelMode = 'automatico';
+
+    // Atualização dos campos da interface mantendo campos em foco intactos
+    function applyScoreboardState(data) {
+      if (!data) return;
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && document.activeElement !== el) {
+          const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+          el.value = String(val).padStart(padLen, '0');
+        }
+      };
+      if (data.scoreA !== undefined) setVal('score-a', data.scoreA);
+      if (data.scoreB !== undefined) setVal('score-b', data.scoreB);
+      if (data.foulsA !== undefined) setVal('fouls-a', data.foulsA);
+      if (data.foulsB !== undefined) setVal('fouls-b', data.foulsB);
+      if (data.period !== undefined) setVal('period', data.period);
+
+      const timerEl = document.getElementById('timer-display');
+      if (timerEl && document.activeElement !== timerEl && data.timer) {
+        timerEl.value = data.timer;
+      }
+      
+      if (data.totalSeconds !== undefined) {
+        totalSeconds = data.totalSeconds;
+      } else if (data.timer) {
+        const parts = data.timer.split(':');
+        if (parts.length === 3) {
+          totalSeconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+        }
+      }
+    }
+
+    // Atualização automática dos campos via AJAX a cada 1 segundo (SOMENTE no modo automático)
+    let isFetchingState = false;
+    function pollScoreboardAjax() {
+      // Se não estiver no modo automático, não realiza AJAX
+      if (currentPanelMode !== 'automatico') return;
+      if (isFetchingState) return;
+      isFetchingState = true;
+      fetch('/api/scoreboard/state')
+        .then(response => {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          return response.json();
+        })
+        .then(data => {
+          if (currentPanelMode === 'automatico') {
+            applyScoreboardState(data);
+          }
+        })
+        .catch(err => {
+          // Erro de rede transitório ou ambiente de demonstração
+        })
+        .finally(() => {
+          isFetchingState = false;
+        });
+    }
+
+    // Envio de comandos de atualização (via WebSocket ou AJAX POST como contingência)
+    function sendScoreboardAction(payload) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+      } else {
+        fetch('/api/scoreboard/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => applyScoreboardState(data))
+        .catch(e => {});
+      }
+    }
 
     function connectWs() {
       const host = window.location.hostname || '192.168.4.1';
@@ -2999,32 +3071,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'state') {
-            const setVal = (id, val) => {
-              const el = document.getElementById(id);
-              if (document.activeElement !== el) {
-                const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
-                el.value = String(val).padStart(padLen, '0');
-              }
-            };
-            setVal('score-a', data.scoreA);
-            setVal('score-b', data.scoreB);
-            setVal('fouls-a', data.foulsA);
-            setVal('fouls-b', data.foulsB);
-            setVal('period', data.period);
-            const timerEl = document.getElementById('timer-display');
-            if (document.activeElement !== timerEl) timerEl.value = data.timer;
-            
-            // Sincronizar contador local e ajustar intervalo conforme estado do servidor
-            const parts = data.timer.split(':');
-            if (parts.length === 3) {
-              totalSeconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
-            }
-            // Se servidor diz que timer esta rodando, garantir intervalo local ativo
-            if (data.timerRunning && !timerInterval) {
-              timerInterval = setInterval(() => { totalSeconds++; updateTimerDisplay(); }, 1000);
-            } else if (!data.timerRunning && timerInterval) {
-              clearInterval(timerInterval); timerInterval = null;
-            }
+            applyScoreboardState(data);
           }
         } catch (e) {
           console.error('Erro ao processar JSON do WebSocket:', e);
@@ -3039,23 +3086,20 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     // Lógica de Contadores (Manual)
     function changeValue(id, amount) {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          action: 'change',
-          target: id,
-          amount: amount
-        }));
-      } else {
-        // Fallback local se offline
-        const el = document.getElementById(id);
-        let val = parseInt(el.value, 10) + amount;
-        if (isNaN(val)) val = 0;
-        if (val < 0) val = 0;
-        const maxVal = (id === 'score-a' || id === 'score-b') ? 999 : 99;
-        if (val > maxVal) val = maxVal;
-        const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
-        el.value = String(val).padStart(padLen, '0');
-      }
+      const el = document.getElementById(id);
+      let val = parseInt(el.value, 10) + amount;
+      if (isNaN(val)) val = 0;
+      if (val < 0) val = 0;
+      const maxVal = (id === 'score-a' || id === 'score-b') ? 999 : 99;
+      if (val > maxVal) val = maxVal;
+      const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+      el.value = String(val).padStart(padLen, '0');
+
+      sendScoreboardAction({
+        action: 'change',
+        target: id,
+        amount: amount
+      });
     }
 
     function manualInputChanged(id) {
@@ -3067,12 +3111,12 @@ const char painel_html[] PROGMEM = R"rawliteral(
       if (val > maxVal) val = maxVal;
       const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
       el.value = String(val).padStart(padLen, '0');
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: 'set', target: id, value: val }));
-      }
+      
+      sendScoreboardAction({ action: 'set', target: id, value: val });
     }
 
     function setPanelMode(mode) {
+      currentPanelMode = mode;
       const isAuto = (mode === 'automatico');
       fetch('/api/automation/mode', {
         method: 'POST',
@@ -3097,6 +3141,10 @@ const char painel_html[] PROGMEM = R"rawliteral(
       const timerEl = document.getElementById('timer-display');
       if (isAuto) timerEl.setAttribute('readonly', 'true');
       else timerEl.removeAttribute('readonly');
+
+      if (isAuto) {
+        pollScoreboardAjax();
+      }
     }
 
     // Máscara automática HH:MM:SS
@@ -3123,9 +3171,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
       // Normalizar display (ex: 90:00 -> 01:30:00)
       updateTimerDisplay();
       // Sincronizar com ESP32
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: 'timer', command: 'set', value: totalSeconds }));
-      }
+      sendScoreboardAction({ action: 'timer', command: 'set', value: totalSeconds });
     }
 
     // Lógica do Cronômetro Local (Fallback)
@@ -3139,47 +3185,20 @@ const char painel_html[] PROGMEM = R"rawliteral(
       }
     }
 
-    function startTimerLocal() {
-      if (timerInterval) return;
-      timerInterval = setInterval(() => {
-        totalSeconds++;
-        updateTimerDisplay();
-      }, 1000);
-    }
-
-    function pauseTimerLocal() {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-
-    function resetTimerLocal() {
-      pauseTimerLocal();
-      totalSeconds = 0;
-      updateTimerDisplay();
-    }
-
-    // Controle do Cronômetro — sempre executa intervalo local para display fluido
+    // Controle do Cronômetro
     function startTimer() {
-      // Commitar qualquer valor digitado antes de iniciar
       timerInputChanged();
-      startTimerLocal(); // garante display a cada 1s
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: 'timer', command: 'start' }));
-      }
+      sendScoreboardAction({ action: 'timer', command: 'start' });
     }
 
     function pauseTimer() {
-      pauseTimerLocal(); // para o intervalo local
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: 'timer', command: 'pause' }));
-      }
+      sendScoreboardAction({ action: 'timer', command: 'pause' });
     }
 
     function resetTimer() {
-      resetTimerLocal(); // zera local e para intervalo
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: 'timer', command: 'reset' }));
-      }
+      totalSeconds = 0;
+      updateTimerDisplay();
+      sendScoreboardAction({ action: 'timer', command: 'reset' });
     }
 
     // Lógica de Troca de Lados
@@ -3257,17 +3276,14 @@ const char painel_html[] PROGMEM = R"rawliteral(
         'Zerar Placar Completo',
         'Tem certeza de que deseja zerar todos os pontos, faltas, período e o cronômetro?',
         () => {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ action: 'reset_all' }));
-          } else {
-            // Fallback local
-            document.getElementById('score-a').value = '000';
-            document.getElementById('score-b').value = '000';
-            document.getElementById('fouls-a').value = '00';
-            document.getElementById('fouls-b').value = '00';
-            document.getElementById('period').value = '00';
-            resetTimerLocal();
-          }
+          sendScoreboardAction({ action: 'reset_all' });
+          document.getElementById('score-a').value = '000';
+          document.getElementById('score-b').value = '000';
+          document.getElementById('fouls-a').value = '00';
+          document.getElementById('fouls-b').value = '00';
+          document.getElementById('period').value = '00';
+          totalSeconds = 0;
+          updateTimerDisplay();
         }
       );
     }
@@ -3327,6 +3343,8 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     // Inicialização
     connectWs();
+    pollScoreboardAjax();
+    setInterval(pollScoreboardAjax, 1000);
 
     // Obter modo salvo no ESP32
     fetch('/api/automation/status')
