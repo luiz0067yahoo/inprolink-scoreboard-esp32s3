@@ -339,6 +339,10 @@
         <label for="portInput">Porta do Servidor</label>
         <input type="number" id="portInput" class="input-field" placeholder="Ex: 8080" value="8080">
       </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label for="prefixInput">Prefixo da API</label>
+        <input type="text" id="prefixInput" class="input-field" placeholder="Ex: /api/" value="/api/">
+      </div>
     </div>
 
     <!-- Step 2: Modalidade -->
@@ -542,11 +546,49 @@
       return d;
     }
 
-    function fetchModalidades(domain, callback) {
-      const cleanDom = cleanDomain(domain);
-      fetch(`/api/modalidades?domain=${encodeURIComponent(cleanDom)}`)
+    function getApiBaseUrl() {
+      let dom = document.getElementById('domainInput') ? document.getElementById('domainInput').value.trim() : 'esporte7.com.br';
+      let port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+      let prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
+
+      if (!dom) dom = 'esporte7.com.br';
+      let protocol = 'https:';
+      if (dom.startsWith('http://')) {
+        protocol = 'http:';
+        dom = dom.replace(/^http:\/\//i, '');
+      } else if (dom.startsWith('https://')) {
+        protocol = 'https:';
+        dom = dom.replace(/^https:\/\//i, '');
+      }
+
+      if (dom.includes(':')) {
+        const parts = dom.split(':');
+        dom = parts[0];
+        if (parts[1]) port = parts[1].replace(/\/.*$/, '');
+      }
+      dom = dom.replace(/\/+$/, '');
+
+      if (dom.endsWith('/api')) {
+        dom = dom.substring(0, dom.length - 4);
+        dom = dom.replace(/\/+$/, '');
+      }
+
+      if (!prefix.startsWith('/')) prefix = '/' + prefix;
+      if (!prefix.endsWith('/')) prefix = prefix + '/';
+
+      let hostPort = dom;
+      if (port && port !== '') {
+        hostPort += ':' + port;
+      }
+      return `${protocol}//${hostPort}${prefix}`;
+    }
+
+    function fetchModalidades(callback) {
+      const url = `${getApiBaseUrl()}modalidades`;
+      console.log('Requisitando modalidades diretamente em:', url);
+      fetch(url)
       .then(r => {
-        if (!r.ok) throw new Error('API erro');
+        if (!r.ok) throw new Error('API erro: ' + r.status);
         return r.json();
       })
       .then(data => {
@@ -556,24 +598,37 @@
         callback();
       })
       .catch(err => {
-        console.warn('API offline, usando fallback de modalidades...', err);
-        const data = [
-          { id: 'Futebol', nome: 'Futebol' },
-          { id: 'Vôlei', nome: 'Vôlei' },
-          { id: 'Natação', nome: 'Natação' },
-          { id: 'Corrida', nome: 'Corrida' }
-        ];
-        populateStepOptions('step-2', 'modalidade', data, '⚽');
-        callback();
+        console.warn('Falha direta em ' + url + ' (' + err.message + '). Tentando fallback via proxy...');
+        fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
+        .then(r => {
+          if (!r.ok) throw new Error('Proxy erro: ' + r.status);
+          return r.json();
+        })
+        .then(data => {
+          const list = Array.isArray(data) ? data : (data.data || data.modalidades || data.sports || []);
+          const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Modalidade' }));
+          populateStepOptions('step-2', 'modalidade', mapped, '⚽');
+          callback();
+        })
+        .catch(err2 => {
+          console.warn('Usando fallback local de modalidades...', err2);
+          const data = [
+            { id: 'Futebol', nome: 'Futebol' },
+            { id: 'Vôlei', nome: 'Vôlei' },
+            { id: 'Natação', nome: 'Natação' },
+            { id: 'Corrida', nome: 'Corrida' }
+          ];
+          populateStepOptions('step-2', 'modalidade', data, '⚽');
+          callback();
+        });
       });
     }
 
-    // Proxy endpoints
-    function fetchCampeonatos(domain, mod, callback) {
-      const cleanDom = cleanDomain(domain);
-      fetch(`/api/campeonatos?domain=${encodeURIComponent(cleanDom)}&modalidade=${encodeURIComponent(mod)}`)
+    function fetchCampeonatos(mod, callback) {
+      const url = `${getApiBaseUrl()}campeonatos?modalidade=${encodeURIComponent(mod)}`;
+      fetch(url)
       .then(r => {
-        if (!r.ok) throw new Error('API erro');
+        if (!r.ok) throw new Error('API erro: ' + r.status);
         return r.json();
       })
       .then(data => {
@@ -583,21 +638,30 @@
         callback();
       })
       .catch(err => {
-        console.warn('API offline, usando fallback de campeonatos...', err);
-        const data = [
-          { id: 'Campeonato 1', nome: 'Campeonato 1' },
-          { id: 'Campeonato 2', nome: 'Campeonato 2' }
-        ];
-        populateStepOptions('step-3', 'campeonato', data, '🏆');
-        callback();
+        fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
+        .then(r => r.json())
+        .then(data => {
+          const list = Array.isArray(data) ? data : (data.data || data.campeonatos || data.championships || []);
+          const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
+          populateStepOptions('step-3', 'campeonato', mapped, '🏆');
+          callback();
+        })
+        .catch(e => {
+          const data = [
+            { id: 'Campeonato 1', nome: 'Campeonato 1' },
+            { id: 'Campeonato 2', nome: 'Campeonato 2' }
+          ];
+          populateStepOptions('step-3', 'campeonato', data, '🏆');
+          callback();
+        });
       });
     }
 
-    function fetchPartidas(domain, camp, callback) {
-      const cleanDom = cleanDomain(domain);
-      fetch(`/api/partidas?domain=${encodeURIComponent(cleanDom)}&campeonato=${encodeURIComponent(camp)}`)
+    function fetchPartidas(camp, callback) {
+      const url = `${getApiBaseUrl()}partidas?campeonato=${encodeURIComponent(camp)}`;
+      fetch(url)
       .then(r => {
-        if (!r.ok) throw new Error('API erro');
+        if (!r.ok) throw new Error('API erro: ' + r.status);
         return r.json();
       })
       .then(data => {
@@ -612,13 +676,27 @@
         callback();
       })
       .catch(err => {
-        console.warn('API offline, usando fallback de partidas...', err);
-        const data = [
-          { id: 'Partida 1', nome: 'Partida 1' },
-          { id: 'Partida 2', nome: 'Partida 2' }
-        ];
-        populateStepOptions('step-4', 'partida', data, '🏁');
-        callback();
+        fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
+        .then(r => r.json())
+        .then(data => {
+          const list = Array.isArray(data) ? data : (data.data || data.partidas || data.matches || []);
+          const mapped = list.map(item => {
+            let home = (item.home_team && item.home_team.name) ? item.home_team.name : (item.time_casa || item.home_team_name || 'TBA');
+            let away = (item.away_team && item.away_team.name) ? item.away_team.name : (item.time_visitante || item.away_team_name || 'TBA');
+            let label = item.nome || (home + ' x ' + away);
+            return { id: item.id, nome: label };
+          });
+          populateStepOptions('step-4', 'partida', mapped, '🏁');
+          callback();
+        })
+        .catch(e => {
+          const data = [
+            { id: 'Partida 1', nome: 'Partida 1' },
+            { id: 'Partida 2', nome: 'Partida 2' }
+          ];
+          populateStepOptions('step-4', 'partida', data, '🏁');
+          callback();
+        });
       });
     }
 
@@ -629,21 +707,23 @@
       if (delta > 0) {
         const domain = document.getElementById('domainInput').value.trim();
         const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+        const prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
         if (!domain) {
           showToast('Por favor, informe o domínio.', 'error');
           return;
         }
         wizardData.dominio = cleanDomain(domain, port);
         wizardData.porta = port ? parseInt(port, 10) : 8080;
+        wizardData.prefixo = prefix || '/api/';
 
         if (currentStep === 1) {
-          fetchModalidades(wizardData.dominio, () => proceed());
+          fetchModalidades(() => proceed());
           return;
         } else if (currentStep === 2) {
-          fetchCampeonatos(wizardData.dominio, wizardData.modalidade, () => proceed());
+          fetchCampeonatos(wizardData.modalidade, () => proceed());
           return;
         } else if (currentStep === 3) {
-          fetchPartidas(wizardData.dominio, wizardData.campeonato, () => proceed());
+          fetchPartidas(wizardData.campeonato, () => proceed());
           return;
         }
       }
@@ -685,7 +765,9 @@
     function finishWizard() {
       wizardData.mode = "automatico";
       const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+      const prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
       wizardData.porta = port ? parseInt(port, 10) : 8080;
+      wizardData.prefixo = prefix || '/api/';
       fetch('/api/automation/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -727,13 +809,14 @@
         showToast('Erro ao salvar. Verifique a conexão com o ESP32.', 'error');
       });
     }
-    // Carregar configurações de domínio e porta salvas no ESP32
+    // Carregar configurações de domínio, porta e prefixo salvas no ESP32
     fetch('/api/automation/status')
       .then(r => r.json())
       .then(data => {
         if (data && data.dominio) {
           let dom = data.dominio;
           let p = data.porta || 8080;
+          let pref = data.prefixo || '/api/';
           if (dom.includes(':')) {
             const parts = dom.split(':');
             dom = parts[0];
@@ -743,6 +826,8 @@
           if (domInput) domInput.value = dom;
           const portInput = document.getElementById('portInput');
           if (portInput) portInput.value = p;
+          const prefInput = document.getElementById('prefixInput');
+          if (prefInput) prefInput.value = pref;
         }
       })
       .catch(e => {});
