@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestão de Usuários - Inprolink System</title>
+  <title>Gestão de Usuários - Esporte7 System</title>
+
   <style>
     * {
       box-sizing: border-box;
@@ -326,7 +327,7 @@
 
           <div class="input-group">
             <label for="fullName">Nome Completo</label>
-            <input type="text" id="fullName" class="input-field" placeholder="Ex: Operador TFC" required autocomplete="off">
+            <input type="text" id="fullName" class="input-field" placeholder="Ex: Operador " required autocomplete="off">
           </div>
 
           <div class="input-group">
@@ -413,7 +414,7 @@
         let roleClass = 'role-operator';
         if (u.role === 'Administrador') roleClass = 'role-admin';
         else if (u.role === 'Gerente') roleClass = 'role-manager';
-        const isDefaultAdmin = u.username === 'inprolink';
+        const isDefaultAdmin = u.username === 'esporte7';
 
         item.innerHTML = `
           <div class="user-info">
@@ -440,6 +441,7 @@
       }
     }
 
+    // Carregar usuários do ESP32 via API
     function loadUsers() {
       fetch('/api/users')
       .then(r => {
@@ -452,8 +454,8 @@
       })
       .catch(err => {
         console.warn('API offline, usando fallback local...', err);
-        users = JSON.parse(localStorage.getItem('inprolink_users')) || [
-          { name: 'Administrador Inprolink', username: 'inprolink', pass: 'link@link', role: 'Administrador' }
+        users = JSON.parse(localStorage.getItem('esporte7_users')) || [
+          { name: 'Administrador Esporte7', username: 'esporte7', pass: 'link@link', role: 'Administrador' }
         ];
         render();
       });
@@ -497,11 +499,11 @@
             showToast('Limite máximo de 10 usuários atingido!', 'error');
             return;
           }
-          users.push({ name, username, pass, role });
+          users.push({ name, username, role });
         } else {
-          users[idx] = { name, username, pass, role };
+          users[idx] = { name, username, role };
         }
-        localStorage.setItem('inprolink_users', JSON.stringify(users));
+        localStorage.setItem('esporte7_users', JSON.stringify(users));
         render();
         resetForm();
       });
@@ -512,18 +514,17 @@
       document.getElementById('userIndex').value = idx;
       document.getElementById('fullName').value = u.name;
       document.getElementById('username').value = u.username;
-      // No edit mode, pass default blank or if loaded local show pass
-      document.getElementById('password').value = u.pass || '';
+      document.getElementById('password').value = '';
       document.getElementById('role').value = u.role;
 
-      document.getElementById('form-title').innerHTML = '📝 Editar Usuário';
+      document.getElementById('form-title').innerHTML = '✏️ Editar Usuário';
       document.getElementById('btnCancel').style.display = 'flex';
       document.getElementById('btnSave').disabled = false;
       document.getElementById('btnSave').style.opacity = '1';
     }
 
     function deleteUser(idx) {
-      if (users[idx].username === 'inprolink') {
+      if (users[idx].username === 'esporte7') {
         showToast('O usuário administrador padrão não pode ser removido.', 'error');
         return;
       }
@@ -546,7 +547,7 @@
         .catch(error => {
           console.warn('API offline, removendo localmente...', error);
           users.splice(idx, 1);
-          localStorage.setItem('inprolink_users', JSON.stringify(users));
+          localStorage.setItem('esporte7_users', JSON.stringify(users));
           render();
           resetForm();
         });

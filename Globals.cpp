@@ -3,6 +3,7 @@
 WifiConfig wifiConfig;
 AutomationConfig automationConfig;
 Preferences preferences;
+DNSServer dnsServer;
 
 WebServer* server = nullptr;
 WebSocketsServer* webSocket = nullptr;

@@ -419,7 +419,7 @@ void handleWifiForget() {
   // Reiniciar mDNS no AP
   MDNS.end();
   delay(50);
-  if (MDNS.begin("placar.esportivo")) {
+  if (MDNS.begin("placar")) {
     MDNS.addService("http", "tcp", wifiConfig.httpPort);
     MDNS.addService("ws", "tcp", wifiConfig.wsPort);
   }

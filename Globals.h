@@ -11,6 +11,7 @@
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
+#include <DNSServer.h>
 
 struct WifiConfig {
   String wifiSsid;
@@ -42,6 +43,7 @@ struct AutomationConfig {
 extern WifiConfig wifiConfig;
 extern AutomationConfig automationConfig;
 extern Preferences preferences;
+extern DNSServer dnsServer;
 
 extern WebServer* server;
 extern WebSocketsServer* webSocket;

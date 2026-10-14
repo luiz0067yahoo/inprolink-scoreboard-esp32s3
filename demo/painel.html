@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Placar Eletrônico - Esporte7 System</title>
+
   <style>
     * {
       box-sizing: border-box;
@@ -100,6 +101,7 @@
     }
 
     .digits-2 { font-size: 3.8rem; letter-spacing: 4px; }
+    .digits-3 { font-size: 3.5rem; letter-spacing: 3px; }
     .digits-timer { font-size: 5rem; letter-spacing: 6px; padding: 10px 30px; }
 
     input.led-text {
@@ -107,27 +109,26 @@
       border: none;
       outline: none;
       text-align: center;
-      width: 1.5em; /* 2 digits */
+      width: 1.5em;
+    }
+    input.led-text.digits-3 {
+      width: 2.2em;
     }
     /* Timer input needs wider width for HH:MM:SS */
     input.led-text.digits-timer {
       width: 11ch;
       letter-spacing: 4px;
     }
-    input.led-text[readonly] {
-      pointer-events: none;
-    }
+    input.led-text[readonly] { pointer-events: none; }
 
     /* Mode Selector */
     .mode-selector {
       display: flex;
       justify-content: center;
       gap: 20px;
-      margin-bottom: 20px;
       padding-bottom: 15px;
       border-bottom: 2px solid #222;
     }
-
     .radio-label {
       display: flex;
       align-items: center;
@@ -139,11 +140,7 @@
       text-transform: uppercase;
       transition: color 0.2s;
     }
-
-    .radio-label:hover {
-      color: #fff;
-    }
-
+    .radio-label:hover { color: #fff; }
     .radio-label input[type="radio"] {
       width: 18px;
       height: 18px;
@@ -382,16 +379,16 @@
 
     <!-- Linha Superior: Time A, Logo, Time B -->
     <div class="row-top">
-      <!-- Time A (2 dígitos) -->
+      <!-- Time A (3 dígitos) -->
       <div class="module-card">
         <span class="module-title" id="title-team-a">TIME A</span>
         <div class="display-group">
           <div class="led-frame">
-            <input type="text" class="led-text digits-2" id="score-a" value="00" maxlength="2" onchange="manualInputChanged('score-a')">
+            <input type="text" class="led-text digits-3" id="score-a" value="000" maxlength="3" onchange="manualInputChanged('score-a')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('score-a', 1)">➕</button>
-            <button class="btn-step btn-minus" onclick="changeValue('score-a', -1)">➖</button>
+            <button class="btn-step btn-plus" onclick="changeValue('score-a', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('score-a', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">PONTOS</span>
@@ -399,20 +396,18 @@
 
       <!-- Logo Central -->
       <div class="logo-container">
-        <div class="logo-badge">TFC</div>
-        <div class="logo-text">Toledão, O Clube da Família</div>
       </div>
 
-      <!-- Time B (2 dígitos) -->
+      <!-- Time B (3 dígitos) -->
       <div class="module-card">
         <span class="module-title" id="title-team-b">TIME B</span>
         <div class="display-group">
           <div class="led-frame">
-            <input type="text" class="led-text digits-2" id="score-b" value="00" maxlength="2" onchange="manualInputChanged('score-b')">
+            <input type="text" class="led-text digits-3" id="score-b" value="000" maxlength="3" onchange="manualInputChanged('score-b')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('score-b', 1)">➕</button>
-            <button class="btn-step btn-minus" onclick="changeValue('score-b', -1)">➖</button>
+            <button class="btn-step btn-plus" onclick="changeValue('score-b', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('score-b', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">PONTOS</span>
@@ -425,11 +420,12 @@
         <input type="text" class="led-text digits-timer" id="timer-display"
           value="00:00:00" maxlength="8" placeholder="HH:MM:SS"
           oninput="timerMask(this)" onchange="timerInputChanged()" readonly>
+
       </div>
       <div class="timer-actions">
         <button class="btn-timer btn-start" onclick="startTimer()">▶️ Iniciar</button>
         <button class="btn-timer btn-pause" onclick="pauseTimer()">⏸️ Pausar</button>
-        <button class="btn-timer btn-reset-time" onclick="resetTimer()">↻ Zerar Tempo</button>
+        <button class="btn-timer btn-reset-time" onclick="resetTimer()">↩️ Zerar Tempo</button>
       </div>
     </div>
 
@@ -443,8 +439,8 @@
             <input type="text" class="led-text digits-2" id="fouls-a" value="00" maxlength="2" onchange="manualInputChanged('fouls-a')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('fouls-a', 1)">➕</button>
-            <button class="btn-step btn-minus" onclick="changeValue('fouls-a', -1)">➖</button>
+            <button class="btn-step btn-plus" onclick="changeValue('fouls-a', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('fouls-a', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">FALTAS</span>
@@ -458,8 +454,8 @@
             <input type="text" class="led-text digits-2" id="period" value="00" maxlength="2" onchange="manualInputChanged('period')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('period', 1)">➕</button>
-            <button class="btn-step btn-minus" onclick="changeValue('period', -1)">➖</button>
+            <button class="btn-step btn-plus" onclick="changeValue('period', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('period', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">PERÍODO</span>
@@ -473,8 +469,8 @@
             <input type="text" class="led-text digits-2" id="fouls-b" value="00" maxlength="2" onchange="manualInputChanged('fouls-b')">
           </div>
           <div class="btn-controls">
-            <button class="btn-step btn-plus" onclick="changeValue('fouls-b', 1)">➕</button>
-            <button class="btn-step btn-minus" onclick="changeValue('fouls-b', -1)">➖</button>
+            <button class="btn-step btn-plus" onclick="changeValue('fouls-b', 1)">+</button>
+            <button class="btn-step btn-minus" onclick="changeValue('fouls-b', -1)">-</button>
           </div>
         </div>
         <span class="module-subtitle">FALTAS</span>
@@ -485,9 +481,9 @@
     <div class="row-footer">
       <button class="btn-action" style="background:#d32f2f" onclick="logout()">🚪 Sair</button>
       <button class="btn-action btn-purple" onclick="confirmResetScoreboard()">↩️ Zerar Placar</button>
-      <button class="btn-action btn-orange" onclick="swapSides()">↔️ Trocar Lado</button>
+      <button class="btn-action btn-orange" onclick="swapSides()">🔀 Trocar Lado</button>
       <button id="btn-settings" class="btn-action btn-teal" onclick="openSettings()">⚙️ Configurações</button>
-      <button class="btn-action btn-blue" onclick="toggleFullscreen()">🔲 Tela Cheia</button>
+      <button class="btn-action btn-blue" onclick="toggleFullscreen()">↕️↔️ Tela Cheia</button>
     </div>
   </div>
 
@@ -526,7 +522,8 @@
             const setVal = (id, val) => {
               const el = document.getElementById(id);
               if (document.activeElement !== el) {
-                el.value = String(val).padStart(2, '0');
+                const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+                el.value = String(val).padStart(padLen, '0');
               }
             };
             setVal('score-a', data.scoreA);
@@ -574,8 +571,10 @@
         let val = parseInt(el.value, 10) + amount;
         if (isNaN(val)) val = 0;
         if (val < 0) val = 0;
-        if (val > 99) val = 99;
-        el.value = String(val).padStart(2, '0');
+        const maxVal = (id === 'score-a' || id === 'score-b') ? 999 : 99;
+        if (val > maxVal) val = maxVal;
+        const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+        el.value = String(val).padStart(padLen, '0');
       }
     }
 
@@ -584,29 +583,23 @@
       let val = parseInt(el.value, 10);
       if (isNaN(val)) val = 0;
       if (val < 0) val = 0;
-      if (val > 99) val = 99;
-      el.value = String(val).padStart(2, '0');
-      
+      const maxVal = (id === 'score-a' || id === 'score-b') ? 999 : 99;
+      if (val > maxVal) val = maxVal;
+      const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
+      el.value = String(val).padStart(padLen, '0');
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          action: 'set',
-          target: id,
-          value: val
-        }));
+        ws.send(JSON.stringify({ action: 'set', target: id, value: val }));
       }
     }
 
     function setPanelMode(mode) {
       const isAuto = (mode === 'automatico');
-      
-      // Salvar preferencia no ESP32
       fetch('/api/automation/mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: mode })
-      }).catch(e => console.warn('Falha ao salvar modo localmente', e));
+      }).catch(e => console.warn('Falha ao salvar modo', e));
 
-      // Habilitar/Desabilitar botões
       document.querySelectorAll('.btn-controls').forEach(el => {
         el.style.display = isAuto ? 'none' : 'flex';
       });
@@ -615,8 +608,6 @@
         btn.style.opacity = isAuto ? '0.5' : '1';
         btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
       });
-
-      // Habilitar/Desabilitar todos os inputs LED
       document.querySelectorAll('input.led-text').forEach(input => {
         if (isAuto) input.setAttribute('readonly', 'true');
         else input.removeAttribute('readonly');
@@ -651,7 +642,7 @@
       totalSeconds = secs;
       // Normalizar display (ex: 90:00 -> 01:30:00)
       updateTimerDisplay();
-      // Sincronizar e iniciar a partir do valor digitado
+      // Sincronizar com ESP32
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ action: 'timer', command: 'set', value: totalSeconds }));
       }
@@ -790,8 +781,8 @@
             ws.send(JSON.stringify({ action: 'reset_all' }));
           } else {
             // Fallback local
-            document.getElementById('score-a').value = '00';
-            document.getElementById('score-b').value = '00';
+            document.getElementById('score-a').value = '000';
+            document.getElementById('score-b').value = '000';
             document.getElementById('fouls-a').value = '00';
             document.getElementById('fouls-b').value = '00';
             document.getElementById('period').value = '00';
@@ -856,25 +847,24 @@
 
     // Inicialização
     connectWs();
-    
-    // Obter modo atual
+
+    // Obter modo salvo no ESP32
     fetch('/api/automation/status')
       .then(r => r.json())
       .then(data => {
         const mode = data.mode || 'automatico';
         const radio = document.querySelector(`input[name="panelMode"][value="${mode}"]`);
-        if(radio) radio.checked = true;
+        if (radio) radio.checked = true;
         setPanelMode(mode);
       })
-      .catch(e => {
-        setPanelMode('automatico');
-      });
+      .catch(() => setPanelMode('automatico'));
 
     const role = sessionStorage.getItem('role') || 'Operador';
     if (role === 'Operador') {
       const btnSettings = document.getElementById('btn-settings');
       if (btnSettings) btnSettings.style.display = 'none';
-      document.querySelector('.mode-selector').style.display = 'none';
+      const modeSel = document.querySelector('.mode-selector');
+      if (modeSel) modeSel.style.display = 'none';
     }
   </script>
 </body>

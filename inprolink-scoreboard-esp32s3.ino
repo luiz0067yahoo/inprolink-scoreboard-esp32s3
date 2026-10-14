@@ -36,7 +36,7 @@ void setup() {
     wifiConfig.staticGateway = "192.168.1.1";
     wifiConfig.staticDns = "8.8.8.8";
     wifiConfig.apSsid = "esporte7system";
-    wifiConfig.apPass = "too@ajw8i67";
+    wifiConfig.apPass = "Esporte7@";
     wifiConfig.apChannel = 6;
     wifiConfig.httpPort = 80;
     wifiConfig.wsPort = 81;
@@ -52,7 +52,7 @@ void setup() {
     wifiConfig.staticGateway = doc["staticGateway"] | "192.168.1.1";
     wifiConfig.staticDns = doc["staticDns"] | "8.8.8.8";
     wifiConfig.apSsid = doc["apSsid"] | "esporte7system";
-    wifiConfig.apPass = doc["apPass"] | "too@ajw8i67";
+    wifiConfig.apPass = doc["apPass"] | "Esporte7@";
     wifiConfig.apChannel = doc["apChannel"] | 6;
     wifiConfig.httpPort = doc["httpPort"] | 80;
     wifiConfig.wsPort = doc["wsPort"] | 81;
@@ -106,6 +106,11 @@ void setup() {
   WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
   
+  // Iniciar DNS Server (Captive Portal) no modo AP - redireciona qualquer domínio para 192.168.4.1
+  dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+  dnsServer.start(53, "*", IPAddress(192, 168, 4, 1));
+  Serial.println("DNS Server (Captive Portal) ativo no IP 192.168.4.1 (porta 53)");
+
   // Always use AP_STA so scanning is available even when not yet connected to a router
   WiFi.mode(WIFI_AP_STA);
   
@@ -131,19 +136,19 @@ void setup() {
       Serial.printf("[mDNS] IP atribuído pelo roteador: %s\n", WiFi.localIP().toString().c_str());
       MDNS.end();
       delay(50);
-      if (MDNS.begin("placar.esportivo")) {
+      if (MDNS.begin("placar")) {
         MDNS.addService("http", "tcp", wifiConfig.httpPort);
         MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-        Serial.printf("[mDNS] Responder ativo na rede local: http://placar.esportivo.local:%d\n", wifiConfig.httpPort);
+        Serial.printf("[mDNS] Responder ativo na rede local: http://placar.local:%d\n", wifiConfig.httpPort);
       }
     }
   });
 
   // Initialize initial mDNS Responder
-  if (MDNS.begin("placar.esportivo")) {
+  if (MDNS.begin("placar")) {
     MDNS.addService("http", "tcp", wifiConfig.httpPort);
     MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-    Serial.println("mDNS inicial ativo: http://placar.esportivo.local");
+    Serial.println("mDNS inicial ativo: http://placar.local");
   }
   
   // Start Web Server on custom HTTP port
@@ -186,8 +191,17 @@ void setup() {
   
   // POST routes for pushing data (gols, updates)
   server->on("/api/proxy_post/gols", HTTP_POST, handleProxyPost);
-  server->on("/api/proxy_post/update_score", HTTP_POST, handleProxyPost);
-  
+  // Captive Portal / 404 fallback redirect
+  server->onNotFound([]() {
+    String host = server->hostHeader();
+    if (WiFi.status() != WL_CONNECTED || host.indexOf("192.168.4.1") >= 0 || host.indexOf("placar") >= 0) {
+      server->sendHeader("Location", String("http://192.168.4.1/"), true);
+      server->send(302, "text/plain", "");
+    } else {
+      server->send(404, "text/plain", "Pagina nao encontrada");
+    }
+  });
+
   server->begin();
   Serial.printf("Servidor HTTP iniciado na porta %d\n", wifiConfig.httpPort);
   
@@ -199,7 +213,8 @@ void setup() {
 }
 
 void loop() {
-  // Feed web servers
+  // Feed web servers and captive portal DNS
+  dnsServer.processNextRequest();
   if (server != nullptr) server->handleClient();
   if (webSocket != nullptr) webSocket->loop();
   
@@ -238,20 +253,21 @@ void loop() {
       // Re-vincular mDNS ao IP da rede local
       MDNS.end();
       delay(50);
-      if (MDNS.begin("placar.esportivo")) {
+      if (MDNS.begin("placar")) {
         MDNS.addService("http", "tcp", wifiConfig.httpPort);
         MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-        Serial.printf("[mDNS] Ativo na rede local: http://placar.esportivo.local:%d\n", wifiConfig.httpPort);
+        Serial.printf("[mDNS] Ativo na rede local: http://placar.local:%d\n", wifiConfig.httpPort);
       }
     } else {
       Serial.println("[Wi-Fi] Desconectado da rede local! Reativando ponto de acesso 'esporte7system'...");
       WiFi.enableAP(true);
       WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
       WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
+      dnsServer.start(53, "*", IPAddress(192, 168, 4, 1));
 
       MDNS.end();
       delay(50);
-      if (MDNS.begin("placar.esportivo")) {
+      if (MDNS.begin("placar")) {
         MDNS.addService("http", "tcp", wifiConfig.httpPort);
         MDNS.addService("ws", "tcp", wifiConfig.wsPort);
       }

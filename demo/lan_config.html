@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Configuração de Rede - Esporte7 System</title>
+
   <style>
     * {
       box-sizing: border-box;
@@ -488,7 +489,7 @@
 
       <div class="input-group">
         <label>Senha do AP</label>
-        <input type="text" id="apPass" class="input-field" value="esporte7123" placeholder="Mínimo 8 caracteres">
+        <input type="text" id="apPass" class="input-field" value="Esporte7@" placeholder="Mínimo 8 caracteres">
       </div>
 
       <div class="grid-2col">
@@ -644,7 +645,6 @@
       })
       .catch(err => {
         console.warn('API offline, usando fallback local de visualização...', err);
-        // Fallback local caso carregue estático
         const saved = localStorage.getItem('esporte7_wifi_config');
         if (saved) {
           const config = JSON.parse(saved);
@@ -772,14 +772,17 @@
       })
       .catch(err => {
         finishScan();
-        console.warn('API offline, simulando redes para demonstração...', err);
-        // Fallback simulação para teste local / GitHub pages
-        populateWifiList([
-          { ssid: 'Clube_Membros', rssi: -64, secure: true },
-          { ssid: 'Esporte7_Tech', rssi: -72, secure: true },
-          { ssid: 'TFC_Visitantes', rssi: -80, secure: false }
-        ], currentSelected);
-        showToast('Busca concluída! Redes carregadas.', 'success');
+        console.warn('API de scan indisponível ou falhou:', err);
+        if (window.location.protocol === 'file:' || window.location.hostname.includes('github.io')) {
+          populateWifiList([
+            { ssid: 'Clube_Membros', rssi: -64, secure: true },
+            { ssid: 'Esporte7_Tech', rssi: -72, secure: true },
+            { ssid: 'TFC_Visitantes', rssi: -80, secure: false }
+          ], currentSelected);
+          showToast('Busca concluída! 3 redes simuladas (Modo Demo).', 'success');
+        } else {
+          showToast('Não foi possível obter redes do ESP32. Tente novamente.', 'error');
+        }
       });
 
       function finishScan() {

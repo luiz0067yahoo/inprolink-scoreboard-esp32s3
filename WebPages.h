@@ -245,6 +245,7 @@ const char login_html[] PROGMEM = R"rawliteral(
 
       <div class="credentials-box">
         ℹ️ <strong>Acesso Padrão:</strong><br>
+        Usuário: <span style="color: #ff1a1a;">esporte7</span> | Senha: <span style="color: #ff1a1a;">link@link</span>
       </div>
 
       <div class="error-msg" id="errorMsg">
@@ -1363,7 +1364,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
 
       <div class="input-group">
         <label>Senha do AP</label>
-        <input type="text" id="apPass" class="input-field" value="esporte7123" placeholder="Mínimo 8 caracteres">
+        <input type="text" id="apPass" class="input-field" value="Esporte7@" placeholder="Mínimo 8 caracteres">
       </div>
 
       <div class="grid-2col">
@@ -2142,15 +2143,15 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     <!-- Step 3: Campeonato -->
     <div class="step-content" id="step-3">
       <div class="card-title">
-        🏅 Selecionar Campeonato
+        🏆 Selecionar Campeonato
       </div>
       <div class="options-grid">
         <div class="option-card selected" onclick="selectCard('campeonato', 'Campeonato 1', this)">
-          🥇
+          🏆
           <span>Campeonato 1</span>
         </div>
         <div class="option-card" onclick="selectCard('campeonato', 'Campeonato 2', this)">
-          🥇
+          🏆
           <span>Campeonato 2</span>
         </div>
       </div>
@@ -2287,6 +2288,10 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = '🏊';
           else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = '🏃';
           else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = '🏀';
+        } else if (field === 'campeonato') {
+          displayIcon = '🏆';
+        } else if (field === 'partida') {
+          displayIcon = '🏁';
         }
         
         card.onclick = () => selectCard(field, item.id, card);
@@ -2306,7 +2311,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       })
       .then(data => {
         const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Esporte' }));
-        populateStepOptions('step-2', 'modalidade', mapped, 'fa-solid fa-futbol');
+        populateStepOptions('step-2', 'modalidade', mapped, '⚽');
         callback();
       })
       .catch(err => {
@@ -2317,7 +2322,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           { id: 'Natação', nome: 'Natação' },
           { id: 'Corrida', nome: 'Corrida' }
         ];
-        populateStepOptions('step-2', 'modalidade', data);
+        populateStepOptions('step-2', 'modalidade', data, '⚽');
         callback();
       });
     }
@@ -2331,7 +2336,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       })
       .then(data => {
         const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
-        populateStepOptions('step-3', 'campeonato', mapped, 'fa-solid fa-medal');
+        populateStepOptions('step-3', 'campeonato', mapped, '🏆');
         callback();
       })
       .catch(err => {
@@ -2340,7 +2345,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           { id: 'Campeonato 1', nome: 'Campeonato 1' },
           { id: 'Campeonato 2', nome: 'Campeonato 2' }
         ];
-        populateStepOptions('step-3', 'campeonato', data, 'fa-solid fa-medal');
+        populateStepOptions('step-3', 'campeonato', data, '🏆');
         callback();
       });
     }
@@ -2357,7 +2362,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           let away = (item.away_team && item.away_team.name) ? item.away_team.name : 'TBA';
           return { id: item.id, nome: home + ' x ' + away };
         });
-        populateStepOptions('step-4', 'partida', mapped, 'fa-solid fa-flag-checkered');
+        populateStepOptions('step-4', 'partida', mapped, '🏁');
         callback();
       })
       .catch(err => {
@@ -2366,7 +2371,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           { id: 'Partida 1', nome: 'Partida 1' },
           { id: 'Partida 2', nome: 'Partida 2' }
         ];
-        populateStepOptions('step-4', 'partida', data, 'fa-solid fa-flag-checkered');
+        populateStepOptions('step-4', 'partida', data, '🏁');
         callback();
       });
     }

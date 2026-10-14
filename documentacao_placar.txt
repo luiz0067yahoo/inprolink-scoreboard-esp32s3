@@ -10,14 +10,14 @@ ele cria sua propria rede Wi-Fi (Modo Access Point).
 
 Passos para o primeiro acesso:
 1. Conecte-se a rede Wi-Fi do placar:
-   - SSID: inprolinksystem
-   - Senha: too@ajw8i67
+   - SSID: esporte7system (ou inprolinksystem)
+   - Senha: Esporte7@
 
 2. Abra o navegador e acesse:
-   - URL: http://192.168.4.1 ou http://placar.esportivo.local
+   - URL: http://192.168.4.1 ou http://placar.local
 
 3. Faca o login com as credenciais padrao de administrador:
-   - Usuario: inprolink
+   - Usuario: esporte7 (ou inprolink)
    - Senha: link@link
 
 Apos o login, voce pode acessar a aba "Conexao Wi-Fi" e conectar o placar a 

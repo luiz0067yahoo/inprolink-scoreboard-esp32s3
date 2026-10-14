@@ -34,8 +34,6 @@
 [![Placar Eletrônico](panel_config_2.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
 [![Placar Eletrônico](panel_config_3.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
 [![Placar Eletrônico](panel_config_4.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
-[![Placar Eletrônico](panel_config_5.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
-[![Placar Eletrônico](panel_config_6.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/panel_config.html)
 
 [![Placar Eletrônico](screenshot.png)](https://luiz0067yahoo.github.io/inprolink-scoreboard-esp32s3/demo/painel.html)
 
@@ -50,9 +48,9 @@ O projeto combina uma interface web responsiva embarcada, resolução de nomes e
 ### 🌟 Destaques do Projeto
 
 * **Controle Independente de 18 Dígitos:** Mapeamento dedicado de 18 saídas GPIO do ESP32-S3 para renderização de pontos (3 dígitos para Time A e 3 dígitos para Time B), faltas, período e cronômetro.
-* **Acesso Simplificado:** Navegação direta por endereço IP (`192.168.4.1`) ou hostname mDNS (`http://placar.esportivo.local`).
+* **Acesso Simplificado:** Navegação direta por endereço IP (`192.168.4.1`) ou hostname mDNS (`http://placar.local`).
 * **Autenticação Embarcada:** Sistema de login com credenciais mestre e suporte a até 10 usuários adicionais salvos na memória NVS.
-* **Consumo de API JSON:** Fluxo encadeado em 5 etapas para seleção automática da partida (Site → Modalidade → Campeonato → Partida → Rodada).
+* **Consumo de API JSON:** Fluxo encadeado em 4 etapas para seleção automática da partida (Site → Modalidade → Campeonato → Partida).
 * **Reset de Fábrica Físico:** Restauração das configurações de fábrica mantendo a GPIO 0 pressionada por 5 segundos.
 
 ---
@@ -62,15 +60,15 @@ O projeto combina uma interface web responsiva embarcada, resolução de nomes e
 Para o primeiro acesso ou após um reset de fábrica:
 
 **1. Conexão Wi-Fi (Modo AP Inicial)**
-* **SSID Wi-Fi:** `inprolinksystem`
-* **Senha Wi-Fi:** `too@ajw8i67`
+* **SSID Wi-Fi:** `esporte7system` *(ou `inprolinksystem`)*
+* **Senha Wi-Fi:** `Esporte7@`
 
 **2. Acesso à Interface Web**
-* **Endereço IP:** `http://192.168.4.1`
-* **Hostname Direto:** `http://placar.esportivo.local` (ou `http://192.168.4.1`)
+* **Endereço IP Padrão (Modo AP):** `http://192.168.4.1`
+* **Hostname na Rede Local:** `http://placar.local` (ou pelo IP do roteador)
 
 **3. Login de Administrador Padrão**
-* **Usuário:** `inprolink`
+* **Usuário:** `esporte7` *(ou `inprolink`)*
 * **Senha:** `link@link`
 
 ---
@@ -192,11 +190,11 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
 ### 📖 Manual de Configuração do Painel Web
 
 **1. Alterar Conexão Wi-Fi e Acesso via Hostname**
-1. Conecte-se à rede `inprolinksystem` e acesse `http://placar.esportivo.local`.
+1. Conecte-se à rede `esporte7system` e acesse `http://192.168.4.1` (ou `http://placar.local`).
 2. Faça login e navegue até a seção **Conexão Wi-Fi**.
 3. Informe o **SSID** e a **Senha** do roteador local da quadra/ginásio.
 4. Clique em **Salvar e Conectar**.
-5. O ESP32-S3 se conectará ao roteador local. A partir desse momento, qualquer dispositivo na mesma rede poderá acessar o painel pelo endereço `http://placar.esportivo.local`.
+5. O ESP32-S3 se conectará ao roteador local. A partir desse momento, qualquer dispositivo na mesma rede poderá acessar o painel pelo endereço `http://placar.local` ou pelo IP fornecido pelo roteador.
 
 **2. Cadastro de até 10 Usuários no ESP32**
 1. No painel principal, acesse a aba **Gestão de Usuários**.
@@ -205,13 +203,12 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
 4. O usuário será gravado na partição NVS da memória Flash (limite máximo de 10 usuários armazenados).
 
 **3. Passo a Passo Wizard para Cadastro da API (Atualização Automática)**
-O assistente encadeado de 5 etapas vincula o placar ao servidor de campeonatos para atualizar o jogo via JSON:
+O assistente encadeado de 4 etapas vincula o placar ao servidor de campeonatos para atualizar o jogo via JSON:
 
-* **Etapa 1 (URL Base):** Digite o endereço da API (ex: `https://api.meusite.com`) e clique em *Carregar Modalidades*.
-* **Etapa 2 (Modalidade):** Selecione a modalidade do jogo (ex: *Futsal*, *Basquete*, *Vôlei*).
+* **Etapa 1 (Domínio / URL Base):** Digite o endereço da API (ex: `https://esporte7.com.br/`) e clique em *Próximo*.
+* **Etapa 2 (Modalidade):** Selecione a modalidade do jogo (ex: *Futebol*, *Futsal*, *Vôlei*, etc.).
 * **Etapa 3 (Campeonato):** Escolha o campeonato desejado na lista retornada.
-* **Etapa 4 (Partida):** Selecione a partida que está sendo realizada.
-* **Etapa 5 (Rodada):** Confirme a rodada atual e clique em **Salvar Automação**.
+* **Etapa 4 (Partida):** Selecione a partida que está sendo realizada (ex: *Time A x Time B*) e clique em **Concluir**.
 
 ---
 

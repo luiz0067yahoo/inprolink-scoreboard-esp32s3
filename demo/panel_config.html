@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wizard de Configuração Geral - Esporte7 System</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 850px;
+      background-color: #0a0a0a;
+      border-radius: 16px;
+      padding: 30px;
+      border: 2px solid #222;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 26, 26, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    /* Header */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #222;
+      padding-bottom: 15px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title i {
+      color: #ff1a1a;
+      font-size: 1.8rem;
+    }
+
+    .header-title h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+    }
+
+    .wizard-status {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Stepper Header Bar */
+    .stepper-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      padding: 0 5px;
+      margin-bottom: 10px;
+    }
+
+    .stepper-bar::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 20px;
+      right: 20px;
+      height: 2px;
+      background: #222;
+      z-index: 1;
+      transform: translateY(-50%);
+    }
+
+    .step-indicator {
+      position: relative;
+      z-index: 2;
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 0 4px;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #141414;
+      border: 2px solid #333;
+      color: #888;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      transition: all 0.3s;
+    }
+
+    .step-indicator.active .step-circle {
+      border-color: #ff1a1a;
+      background: #ff1a1a;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 26, 26, 0.5);
+    }
+
+    .step-indicator.completed .step-circle {
+      border-color: #2e7d32;
+      background: #2e7d32;
+      color: #fff;
+    }
+
+    .step-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+    .step-indicator.active .step-label { color: #fff; }
+
+    /* Step Content Area */
+    .step-content {
+      display: none;
+      flex-direction: column;
+      gap: 18px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 25px;
+      min-height: 260px;
+    }
+
+    .step-content.active { display: flex; }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ff1a1a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px 14px;
+      background-color: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus { border-color: #ff1a1a; }
+
+    /* Cards Grid */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-top: 5px;
+    }
+
+    .option-card {
+      background: #181818;
+      border: 2px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .option-card:hover { border-color: #444; }
+
+    .option-card.selected {
+      border-color: #ff1a1a;
+      background: #1a0a0a;
+      box-shadow: 0 0 12px rgba(255, 26, 26, 0.25);
+    }
+
+    .option-card i {
+      font-size: 2rem;
+      color: #666;
+    }
+
+    .option-card.selected i { color: #ff1a1a; }
+
+    .option-card span {
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: #ddd;
+    }
+
+    /* Footer Nav */
+    .footer-bar {
+      display: flex;
+      justify-content: space-between;
+      border-top: 2px solid #222;
+      padding-top: 18px;
+    }
+
+    .btn-action {
+      padding: 12px 22px;
+      border-radius: 8px;
+      border: none;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: filter 0.2s;
+    }
+
+    .btn-action:hover { filter: brightness(1.15); }
+    .btn-prev { background: #222; }
+    .btn-next { background: linear-gradient(180deg, #1565c0, #0d47a1); }
+    .btn-finish { background: linear-gradient(180deg, #2e7d32, #1b5e20); display: none; }
+    .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 500; z-index: 9999;
+      transition: top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .toast-notification.show { top: 20px; }
+    .toast-success { border-left: 5px solid #4CAF50; }
+    .toast-error { border-left: 5px solid #F44336; }
+    .toast-info { border-left: 5px solid #2196F3; }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <!-- Header -->
+    <div class="header-bar">
+      <div class="header-title">
+        🎚️
+        <h1>Configuração do Placar</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <div class="wizard-status" id="step-status-text">Passo 1 de 4</div>
+        <button class="btn-action" style="background: #e53935; padding: 6px 12px; font-size: 14px; border-radius: 6px;" onclick="window.location.href='painel.html'">❌ Fechar</button>
+      </div>
+    </div>
+
+    <!-- Mode Selection -->
+    <div class="mode-selector" style="text-align: center; margin-bottom: 20px;">
+      <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="automatico" checked onchange="toggleMode()"> 🤖 Automático (Via API)
+      </label>
+      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="manual" onchange="toggleMode()"> ✍️ Manual (Local)
+      </label>
+    </div>
+
+    <!-- Stepper Navigation Header -->
+    <div id="wizard-container">
+      <div class="stepper-bar">
+      <div class="step-indicator active" id="ind-1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Domínio</span>
+      </div>
+      <div class="step-indicator" id="ind-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Modalidade</span>
+      </div>
+      <div class="step-indicator" id="ind-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Campeonato</span>
+      </div>
+      <div class="step-indicator" id="ind-4">
+        <div class="step-circle">4</div>
+        <span class="step-label">Partida</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Domínio -->
+    <div class="step-content active" id="step-1">
+      <div class="card-title">
+        🌐 Informar Domínio do Sistema
+      </div>
+      <div class="input-group">
+        <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
+        <input type="text" id="domainInput" class="input-field" placeholder="Ex: https://esporte7.com.br/ ou 192.168.1.100" value="https://esporte7.com.br/">
+      </div>
+    </div>
+
+    <!-- Step 2: Modalidade -->
+    <div class="step-content" id="step-2">
+      <div class="card-title">
+        🏆 Selecionar Modalidade
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('modalidade', 'Futebol', this)">
+          ⚽
+          <span>Futebol</span>
+        </div>
+        <div class="option-card" onclick="selectCard('modalidade', 'Vôlei', this)">
+          🏐
+          <span>Vôlei</span>
+        </div>
+        <div class="option-card" onclick="selectCard('modalidade', 'Natação', this)">
+          🏊
+          <span>Natação</span>
+        </div>
+        <div class="option-card" onclick="selectCard('modalidade', 'Corrida', this)">
+          🏃‍♀️
+          <span>Corrida</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Campeonato -->
+    <div class="step-content" id="step-3">
+      <div class="card-title">
+        🏆 Selecionar Campeonato
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('campeonato', 'Campeonato 1', this)">
+          🏆
+          <span>Campeonato 1</span>
+        </div>
+        <div class="option-card" onclick="selectCard('campeonato', 'Campeonato 2', this)">
+          🏆
+          <span>Campeonato 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Partida -->
+    <div class="step-content" id="step-4">
+      <div class="card-title">
+        🎮 Selecionar Partida
+      </div>
+      <div class="options-grid">
+        <div class="option-card selected" onclick="selectCard('partida', 'Partida 1', this)">
+          🏁
+          <span>Partida 1</span>
+        </div>
+        <div class="option-card" onclick="selectCard('partida', 'Partida 2', this)">
+          🏁
+          <span>Partida 2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Controls -->
+    <div class="footer-bar">
+      <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
+        ◀️ Anterior
+      </button>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-action btn-next" id="btnNext" onclick="changeStep(1)">
+          Próximo ▶️
+        </button>
+        <button class="btn-action btn-finish" id="btnFinish" onclick="finishWizard()">
+          ✅ Concluir
+        </button>
+      </div>
+    </div>
+    </div> <!-- End wizard-container -->
+
+    <!-- Container do Manual -->
+    <div id="manual-container" style="display: none; padding: 20px; background: #1a1a1a; border-radius: 12px; margin-top: 15px;">
+     
+      <button class="btn-action btn-finish" style="width: 100%; margin-top: 20px; justify-content: center;" onclick="saveManualConfig()">
+        ✅ Salvar Configuração Manual
+      </button>
+    </div>
+
+  </div>
+
+  <div id="toast" class="toast-notification">
+    <span id="toast-icon">ℹ️</span>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
+  <script>
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toast.className = 'toast-notification show';
+      if (type === 'success') { toast.classList.add('toast-success'); toastIcon.innerText = '✅'; }
+      else if (type === 'error') { toast.classList.add('toast-error'); toastIcon.innerText = '❌'; }
+      else { toast.classList.add('toast-info'); toastIcon.innerText = 'ℹ️'; }
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+    if (sessionStorage.getItem('authenticated') !== 'true') {
+      window.location.href = 'login.html';
+    }
+
+    let currentStep = 1;
+    const totalSteps = 4;
+    let currentMode = 'automatico';
+
+    function toggleMode() {
+      const mode = document.querySelector('input[name="automationMode"]:checked').value;
+      currentMode = mode;
+      
+      wizardData.mode = mode;
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wizardData)
+      }).catch(e => console.log(e));
+
+      if (mode === 'automatico') {
+        document.getElementById('wizard-container').style.display = 'block';
+        document.getElementById('manual-container').style.display = 'none';
+      } else {
+        document.getElementById('wizard-container').style.display = 'none';
+        document.getElementById('manual-container').style.display = 'block';
+      }
+    }
+
+    // Estado da seleção do Wizard
+    const wizardData = {
+      dominio: 'https://esporte7.com.br/',
+      modalidade: '',
+      campeonato: '',
+      partida: ''
+    };
+
+    function selectCard(field, value, el) {
+      wizardData[field] = value;
+      const parent = el.parentElement;
+      const cards = parent.querySelectorAll('.option-card');
+      cards.forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function populateStepOptions(stepId, field, items, iconClass = '⚪') {
+      const stepEl = document.getElementById(stepId);
+      const grid = stepEl.querySelector('.options-grid');
+      grid.innerHTML = '';
+      
+      if (!items || items.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 20px;">Nenhuma opção encontrada</div>';
+        return;
+      }
+      
+      items.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'option-card';
+        if (idx === 0) {
+          card.classList.add('selected');
+          wizardData[field] = item.id;
+        }
+        
+        let displayIcon = iconClass;
+        if (field === 'modalidade') {
+          const lowerName = item.nome.toLowerCase();
+          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = '⚽';
+          else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = '🏐';
+          else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = '🏊';
+          else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = '🏃';
+          else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = '🏀';
+        } else if (field === 'campeonato') {
+          displayIcon = '🏆';
+        } else if (field === 'partida') {
+          displayIcon = '🏁';
+        }
+        
+        card.onclick = () => selectCard(field, item.id, card);
+        card.innerHTML = `
+          <span style="font-size: 24px;">${displayIcon}</span>
+          <span>${item.nome}</span>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function fetchModalidades(domain, callback) {
+      fetch(`/api/proxy/modalidades?domain=${encodeURIComponent(domain)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Esporte' }));
+        populateStepOptions('step-2', 'modalidade', mapped, '⚽');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de modalidades...', err);
+        const data = [
+          { id: 'Futebol', nome: 'Futebol' },
+          { id: 'Vôlei', nome: 'Vôlei' },
+          { id: 'Natação', nome: 'Natação' },
+          { id: 'Corrida', nome: 'Corrida' }
+        ];
+        populateStepOptions('step-2', 'modalidade', data, '⚽');
+        callback();
+      });
+    }
+
+    // Proxy endpoints
+    function fetchCampeonatos(domain, mod, callback) {
+      fetch(`/api/proxy/campeonatos?domain=${encodeURIComponent(domain)}&modalidade=${encodeURIComponent(mod)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
+        populateStepOptions('step-3', 'campeonato', mapped, '🏆');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de campeonatos...', err);
+        const data = [
+          { id: 'Campeonato 1', nome: 'Campeonato 1' },
+          { id: 'Campeonato 2', nome: 'Campeonato 2' }
+        ];
+        populateStepOptions('step-3', 'campeonato', data, '🏆');
+        callback();
+      });
+    }
+
+    function fetchPartidas(domain, camp, callback) {
+      fetch(`/api/proxy/partidas?domain=${encodeURIComponent(domain)}&campeonato=${encodeURIComponent(camp)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('API erro');
+        return r.json();
+      })
+      .then(data => {
+        const mapped = data.map(item => {
+          let home = (item.home_team && item.home_team.name) ? item.home_team.name : 'TBA';
+          let away = (item.away_team && item.away_team.name) ? item.away_team.name : 'TBA';
+          return { id: item.id, nome: home + ' x ' + away };
+        });
+        populateStepOptions('step-4', 'partida', mapped, '🏁');
+        callback();
+      })
+      .catch(err => {
+        console.warn('API offline, usando fallback de partidas...', err);
+        const data = [
+          { id: 'Partida 1', nome: 'Partida 1' },
+          { id: 'Partida 2', nome: 'Partida 2' }
+        ];
+        populateStepOptions('step-4', 'partida', data, '🏁');
+        callback();
+      });
+    }
+
+    function changeStep(delta) {
+      const newStep = currentStep + delta;
+      if (newStep < 1 || newStep > totalSteps) return;
+
+      if (delta > 0) {
+        const domain = document.getElementById('domainInput').value.trim();
+        if (!domain) {
+          showToast('Por favor, informe o domínio.', 'error');
+          return;
+        }
+        wizardData.dominio = domain;
+
+        if (currentStep === 1) {
+          fetchModalidades(domain, () => proceed());
+          return;
+        } else if (currentStep === 2) {
+          fetchCampeonatos(domain, wizardData.modalidade, () => proceed());
+          return;
+        } else if (currentStep === 3) {
+          fetchPartidas(domain, wizardData.campeonato, () => proceed());
+          return;
+        }
+      }
+
+      proceed();
+
+      function proceed() {
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`ind-${currentStep}`).classList.remove('active');
+
+        if (delta > 0) {
+          document.getElementById(`ind-${currentStep}`).classList.add('completed');
+        } else {
+          document.getElementById(`ind-${newStep}`).classList.remove('completed');
+        }
+
+        currentStep = newStep;
+
+        document.getElementById(`step-${currentStep}`).classList.add('active');
+        document.getElementById(`ind-${currentStep}`).classList.add('active');
+
+        updateButtons();
+      }
+    }
+
+    function updateButtons() {
+      document.getElementById('step-status-text').innerText = `Passo ${currentStep} de ${totalSteps}`;
+      document.getElementById('btnPrev').disabled = (currentStep === 1);
+
+      if (currentStep === totalSteps) {
+        document.getElementById('btnNext').style.display = 'none';
+        document.getElementById('btnFinish').style.display = 'flex';
+      } else {
+        document.getElementById('btnNext').style.display = 'flex';
+        document.getElementById('btnFinish').style.display = 'none';
+      }
+    }
+
+    function finishWizard() {
+      wizardData.mode = "automatico";
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wizardData)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Erro ao salvar automação');
+        showToast('Configuração de automação salva com sucesso no ESP32!', 'success');
+        window.location.href = 'painel.html';
+      })
+      .catch(err => {
+        console.warn('API offline, salvando localmente...', err);
+        localStorage.setItem('esporte7_wizard_setup', JSON.stringify(wizardData));
+        showToast('Configuração concluída (Simulado)!', 'success');
+        window.location.href = 'painel.html';
+      });
+    }
+
+    function saveManualConfig() {
+      const data = {
+        mode: "manual",
+        dominio: document.getElementById('manual_dominio').value.trim(),
+        modalidade: document.getElementById('manual_modalidade').value.trim(),
+        campeonato: document.getElementById('manual_campeonato').value.trim(),
+        partida: document.getElementById('manual_partida').value.trim()
+      };
+      
+      fetch('/api/automation/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Erro ao salvar');
+        showToast('Configuração manual salva com sucesso no ESP32!', 'success');
+        window.location.href = 'painel.html';
+      })
+      .catch(err => {
+        showToast('Erro ao salvar. Verifique a conexão com o ESP32.', 'error');
+      });
+    }
+  </script>
+</body>
+</html>
