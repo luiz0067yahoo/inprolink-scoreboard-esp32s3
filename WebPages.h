@@ -2106,11 +2106,11 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </div>
       <div class="input-group">
         <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
-        <input type="text" id="domainInput" class="input-field" placeholder="Ex: esporte7.com.br ou 192.168.1.100" value="esporte7.com.br">
+        <input type="text" id="domainInput" class="input-field" placeholder="Ex: esportes7.com.br ou 192.168.1.100" value="esportes7.com.br">
       </div>
       <div class="input-group" style="margin-top: 15px;">
-        <label for="portInput">Porta do Servidor</label>
-        <input type="number" id="portInput" class="input-field" placeholder="Ex: 8080" value="8080">
+        <label for="portInput">Porta do Servidor (Opcional)</label>
+        <input type="number" id="portInput" class="input-field" placeholder="Padrão: Vazio (HTTPS 443)" value="">
       </div>
       <div class="input-group" style="margin-top: 15px;">
         <label for="prefixInput">Prefixo da API</label>
@@ -2251,7 +2251,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     // Estado da seleção do Wizard
     const wizardData = {
-      dominio: 'https://esporte7.com.br/',
+      dominio: 'https://esportes7.com.br/',
       modalidade: '',
       campeonato: '',
       partida: ''
@@ -2285,12 +2285,14 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         
         let displayIcon = iconClass;
         if (field === 'modalidade') {
-          const lowerName = item.nome.toLowerCase();
+          const lowerName = (item.nome || '').toLowerCase();
           if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = '⚽';
           else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = '🏐';
           else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = '🏊';
           else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = '🏃';
           else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = '🏀';
+          else if (lowerName.includes('tênis') || lowerName.includes('tenis')) displayIcon = '🎾';
+          else if (lowerName.includes('hand')) displayIcon = '🤾';
         } else if (field === 'campeonato') {
           displayIcon = '🏆';
         } else if (field === 'partida') {
@@ -2307,24 +2309,24 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     function cleanDomain(d, port = '') {
-      if (!d) d = 'esporte7.com.br';
+      if (!d || d === 'esporte7.com.br') d = 'esportes7.com.br';
       d = d.trim();
       d = d.replace(/^https?:\/\//i, '');
       d = d.replace(/\/+$/, '');
       d = d.replace(/\/api$/, '');
       d = d.replace(/\/+$/, '');
-      if (port && port !== '' && !d.includes(':')) {
+      if (port && port !== '' && port !== '0' && port !== '80' && port !== '443' && port !== '8080' && !d.includes(':')) {
         d = d + ':' + port;
       }
       return d;
     }
 
     function getApiBaseUrl() {
-      let dom = document.getElementById('domainInput') ? document.getElementById('domainInput').value.trim() : 'esporte7.com.br';
-      let port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+      let dom = document.getElementById('domainInput') ? document.getElementById('domainInput').value.trim() : 'esportes7.com.br';
+      let port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '';
       let prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
 
-      if (!dom) dom = 'esporte7.com.br';
+      if (!dom || dom === 'esporte7.com.br') dom = 'esportes7.com.br';
       let protocol = 'https:';
       if (dom.startsWith('http://')) {
         protocol = 'http:';
@@ -2350,14 +2352,14 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       if (!prefix.endsWith('/')) prefix = prefix + '/';
 
       let hostPort = dom;
-      if (port && port !== '') {
+      if (port && port !== '' && port !== '0' && port !== '80' && port !== '443' && port !== '8080') {
         hostPort += ':' + port;
       }
       return `${protocol}//${hostPort}${prefix}`;
     }
 
     function fetchModalidades(callback) {
-      const url = `${getApiBaseUrl()}modalidades`;
+      const url = `${getApiBaseUrl()}sports`;
       console.log('Requisitando modalidades diretamente em:', url);
       fetch(url)
       .then(r => {
@@ -2386,10 +2388,10 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         .catch(err2 => {
           console.warn('Usando fallback local de modalidades...', err2);
           const data = [
-            { id: 'Futebol', nome: 'Futebol' },
-            { id: 'Vôlei', nome: 'Vôlei' },
-            { id: 'Natação', nome: 'Natação' },
-            { id: 'Corrida', nome: 'Corrida' }
+            { id: 1, nome: 'Futebol' },
+            { id: 2, nome: 'Vôlei' },
+            { id: 3, nome: 'Basquete' },
+            { id: 4, nome: 'Futsal' }
           ];
           populateStepOptions('step-2', 'modalidade', data, '⚽');
           callback();
@@ -2398,7 +2400,9 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     function fetchCampeonatos(mod, callback) {
-      const url = `${getApiBaseUrl()}campeonatos?modalidade=${encodeURIComponent(mod)}`;
+      let queryParam = mod ? `?sport_id=${encodeURIComponent(mod)}` : '';
+      const url = `${getApiBaseUrl()}clubs/1/championships${queryParam}`;
+      console.log('Requisitando campeonatos diretamente em:', url);
       fetch(url)
       .then(r => {
         if (!r.ok) throw new Error('API erro: ' + r.status);
@@ -2406,23 +2410,26 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       })
       .then(data => {
         const list = Array.isArray(data) ? data : (data.data || data.campeonatos || data.championships || []);
-        const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
+        const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || item.title || 'Campeonato' }));
         populateStepOptions('step-3', 'campeonato', mapped, '🏆');
         callback();
       })
       .catch(err => {
+        console.warn('Falha direta em campeonatos, tentando proxy...', err);
         fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error('Proxy erro: ' + r.status);
+          return r.json();
+        })
         .then(data => {
           const list = Array.isArray(data) ? data : (data.data || data.campeonatos || data.championships || []);
-          const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
+          const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || item.title || 'Campeonato' }));
           populateStepOptions('step-3', 'campeonato', mapped, '🏆');
           callback();
         })
         .catch(e => {
           const data = [
-            { id: 'Campeonato 1', nome: 'Campeonato 1' },
-            { id: 'Campeonato 2', nome: 'Campeonato 2' }
+            { id: 1, nome: 'Campeonato Principal' }
           ];
           populateStepOptions('step-3', 'campeonato', data, '🏆');
           callback();
@@ -2431,7 +2438,8 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     function fetchPartidas(camp, callback) {
-      const url = `${getApiBaseUrl()}partidas?campeonato=${encodeURIComponent(camp)}`;
+      const url = `${getApiBaseUrl()}championships/${encodeURIComponent(camp)}/matches`;
+      console.log('Requisitando partidas diretamente em:', url);
       fetch(url)
       .then(r => {
         if (!r.ok) throw new Error('API erro: ' + r.status);
@@ -2449,8 +2457,12 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         callback();
       })
       .catch(err => {
+        console.warn('Falha direta em partidas, tentando proxy...', err);
         fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error('Proxy erro: ' + r.status);
+          return r.json();
+        })
         .then(data => {
           const list = Array.isArray(data) ? data : (data.data || data.partidas || data.matches || []);
           const mapped = list.map(item => {
@@ -2464,8 +2476,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         })
         .catch(e => {
           const data = [
-            { id: 'Partida 1', nome: 'Partida 1' },
-            { id: 'Partida 2', nome: 'Partida 2' }
+            { id: 1, nome: 'Partida Demo 1' }
           ];
           populateStepOptions('step-4', 'partida', data, '🏁');
           callback();
@@ -2479,14 +2490,14 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
       if (delta > 0) {
         const domain = document.getElementById('domainInput').value.trim();
-        const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+        const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '';
         const prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
         if (!domain) {
           showToast('Por favor, informe o domínio.', 'error');
           return;
         }
         wizardData.dominio = cleanDomain(domain, port);
-        wizardData.porta = port ? parseInt(port, 10) : 8080;
+        wizardData.porta = (port && port !== '0' && port !== '80' && port !== '443' && port !== '8080') ? parseInt(port, 10) : 0;
         wizardData.prefixo = prefix || '/api/';
 
         if (currentStep === 1) {
@@ -2537,9 +2548,9 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     function finishWizard() {
       wizardData.mode = "automatico";
-      const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+      const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '';
       const prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
-      wizardData.porta = port ? parseInt(port, 10) : 8080;
+      wizardData.porta = (port && port !== '0' && port !== '80' && port !== '443' && port !== '8080') ? parseInt(port, 10) : 0;
       wizardData.prefixo = prefix || '/api/';
       fetch('/api/automation/config', {
         method: 'POST',
@@ -2589,7 +2600,8 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       .then(data => {
         if (data && data.dominio) {
           let dom = data.dominio;
-          let p = data.porta || 8080;
+          if (dom === 'esporte7.com.br') dom = 'esportes7.com.br';
+          let p = (data.porta && data.porta != 8080 && data.porta != 443 && data.porta != 80 && data.porta != 0) ? data.porta : '';
           let pref = data.prefixo || '/api/';
           if (dom.includes(':')) {
             const parts = dom.split(':');

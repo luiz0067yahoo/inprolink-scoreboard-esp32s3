@@ -477,8 +477,8 @@ void handleAutomationConfig() {
   // Reload local automation configs
   automationConfig.active = doc["active"] | false;
   automationConfig.mode = doc["mode"] | "automatico";
-  automationConfig.dominio = cleanDomain(doc["dominio"] | "esporte7.com.br");
-  automationConfig.porta = doc["porta"] | (doc["port"] | 8080);
+  automationConfig.dominio = cleanDomain(doc["dominio"] | "esportes7.com.br");
+  automationConfig.porta = doc["porta"] | (doc["port"] | 0);
   automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
   automationConfig.modalidade = doc["modalidade"] | "";
   automationConfig.campeonato = doc["campeonato"] | "";
@@ -565,7 +565,10 @@ String urlEncode(String str) {
 
 String cleanDomain(String d) {
   d.trim();
+  d.replace("https://", "");
+  d.replace("http://", "");
   while (d.endsWith("/")) d = d.substring(0, d.length() - 1);
+  if (d == "" || d == "esporte7.com.br") d = "esportes7.com.br";
   return d;
 }
 
@@ -614,17 +617,17 @@ void handleProxy() {
   String port = server->arg("port");
   if (port == "" && server->hasArg("porta")) port = server->arg("porta");
   if (port == "" && automationConfig.porta > 0) port = String(automationConfig.porta);
-  if (port == "") port = "8080";
+  if (port == "8080" || port == "0" || port == "80" || port == "443") port = "";
   
-  if (domain == "") {
+  if (domain == "" || domain == "esporte7.com.br") {
     if (automationConfig.dominio != "") {
       domain = cleanDomain(automationConfig.dominio);
     } else {
-      domain = "esporte7.com.br";
+      domain = "esportes7.com.br";
     }
   }
   
-  // Se o domínio informado não tiver porta explícita, anexa a porta informada
+  // Se o domínio informado não tiver porta explícita, anexa a porta informada se houver porta customizada
   int colonIdx = domain.indexOf(':', domain.startsWith("http") ? 8 : 0);
   if (colonIdx == -1 && port.length() > 0) {
     domain += ":" + port;
@@ -633,31 +636,31 @@ void handleProxy() {
   String url = "";
   if (server->hasArg("url")) {
     url = server->arg("url");
+    url.replace("esporte7.com.br:8080", "esportes7.com.br");
+    url.replace("esporte7.com.br", "esportes7.com.br");
+    url.replace(":8080/api", "/api");
+    url.replace("/api/modalidades", "/api/sports");
+    url.replace("/api/campeonatos", "/api/clubs/1/championships");
   } else {
     String uri = server->uri();
     String targetPath = "";
-    if (uri.endsWith("modalidades")) {
-      targetPath = "modalidades";
-    } else if (uri.endsWith("sports")) {
+    if (uri.endsWith("modalidades") || uri.endsWith("sports")) {
       targetPath = "sports";
     } else if (uri.endsWith("campeonatos")) {
       String modId = server->hasArg("modalidade") ? server->arg("modalidade") : server->arg("sport_id");
-      targetPath = "campeonatos";
+      targetPath = "clubs/1/championships";
       if (modId.length() > 0) {
-        targetPath += "?modalidade=" + urlEncode(modId);
+        targetPath += "?sport_id=" + urlEncode(modId);
       }
     } else if (uri.indexOf("championships") >= 0 && !uri.endsWith("/matches")) {
       String sportId = server->hasArg("sport_id") ? server->arg("sport_id") : server->arg("modalidade");
-      targetPath = "clubs/toledao/championships";
+      targetPath = "clubs/1/championships";
       if (sportId.length() > 0) {
         targetPath += "?sport_id=" + urlEncode(sportId);
       }
     } else if (uri.endsWith("partidas")) {
       String campId = server->hasArg("campeonato") ? server->arg("campeonato") : server->arg("championship_id");
-      targetPath = "partidas";
-      if (campId.length() > 0) {
-        targetPath += "?campeonato=" + urlEncode(campId);
-      }
+      targetPath = "championships/" + urlEncode(campId) + "/matches";
     } else if (uri.indexOf("matches") >= 0) {
       String campId = "";
       if (uri.startsWith("/api/championships/")) {
@@ -681,13 +684,13 @@ void handleProxy() {
   Serial.println(url);
   
   HTTPClient http;
-  http.setTimeout(3000);
+  http.setTimeout(5000);
   int httpCode = -1;
   
   if (url.startsWith("https://")) {
     WiFiClientSecure client;
     client.setInsecure(); // Disable HTTPS certificate check for flexibility
-    client.setTimeout(3);
+    client.setTimeout(5000);
     http.begin(client, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
@@ -700,12 +703,12 @@ void handleProxy() {
     }
     http.end();
     
-    // Fallback: tentar em HTTP puro se HTTPS falhar (ex: porta 8080 sem SSL)
+    // Fallback: tentar em HTTP puro se HTTPS falhar
     String plainUrl = "http://" + url.substring(8);
     Serial.print("Proxy HTTP fallback: ");
     Serial.println(plainUrl);
     WiFiClient plainClient;
-    plainClient.setTimeout(3);
+    plainClient.setTimeout(5000);
     http.begin(plainClient, plainUrl);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
@@ -718,7 +721,7 @@ void handleProxy() {
     http.end();
   } else {
     WiFiClient plainClient;
-    plainClient.setTimeout(3);
+    plainClient.setTimeout(5000);
     http.begin(plainClient, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
@@ -763,13 +766,13 @@ void handleProxyPost() {
   Serial.println(url);
   
   HTTPClient http;
-  http.setTimeout(3000);
+  http.setTimeout(5000);
   int httpCode = -1;
   
   if (url.startsWith("https://")) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(3);
+    client.setTimeout(5000);
     http.begin(client, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
@@ -787,7 +790,7 @@ void handleProxyPost() {
     Serial.print("Proxy HTTP POST fallback: ");
     Serial.println(plainUrl);
     WiFiClient plainClient;
-    plainClient.setTimeout(3);
+    plainClient.setTimeout(5000);
     http.begin(plainClient, plainUrl);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
@@ -801,7 +804,7 @@ void handleProxyPost() {
     http.end();
   } else {
     WiFiClient plainClient;
-    plainClient.setTimeout(3);
+    plainClient.setTimeout(5000);
     http.begin(plainClient, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
@@ -1042,9 +1045,9 @@ void pollScoreboardAPI() {
   lastPollMillis = millis();
   
   String dom = cleanDomain(automationConfig.dominio);
-  if (dom == "") dom = "esporte7.com.br";
+  if (dom == "" || dom == "esporte7.com.br") dom = "esportes7.com.br";
   int colonIdx = dom.indexOf(':', dom.startsWith("http") ? 8 : 0);
-  if (colonIdx == -1 && automationConfig.porta > 0) {
+  if (colonIdx == -1 && automationConfig.porta > 0 && automationConfig.porta != 80 && automationConfig.porta != 443 && automationConfig.porta != 8080) {
     dom += ":" + String(automationConfig.porta);
   }
   String url = buildApiUrl(dom, "/api/public/matches/" + urlEncode(automationConfig.partida));
@@ -1054,19 +1057,19 @@ void pollScoreboardAPI() {
   
   int httpCode = -1;
   HTTPClient http;
-  http.setTimeout(2500);
+  http.setTimeout(5000);
 
   if (url.startsWith("https://")) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(2);
+    client.setTimeout(5000);
     http.begin(client, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
     httpCode = http.GET();
   } else {
     WiFiClient plainClient;
-    plainClient.setTimeout(2);
+    plainClient.setTimeout(5000);
     http.begin(plainClient, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");

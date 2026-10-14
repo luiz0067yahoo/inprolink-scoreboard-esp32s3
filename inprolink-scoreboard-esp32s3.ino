@@ -63,8 +63,8 @@ void setup() {
   if (autJson == "") {
     automationConfig.active = false;
     automationConfig.mode = "automatico";
-    automationConfig.dominio = "esporte7.com.br";
-    automationConfig.porta = 8080;
+    automationConfig.dominio = "esportes7.com.br";
+    automationConfig.porta = 0;
     automationConfig.prefixo = "/api/";
     automationConfig.modalidade = "";
     automationConfig.campeonato = "";
@@ -76,8 +76,8 @@ void setup() {
     deserializeJson(doc, autJson);
     automationConfig.active = doc["active"] | false;
     automationConfig.mode = doc["mode"] | "automatico";
-    automationConfig.dominio = cleanDomain(doc["dominio"] | "esporte7.com.br");
-    automationConfig.porta = doc["porta"] | (doc["port"] | 8080);
+    automationConfig.dominio = cleanDomain(doc["dominio"] | "esportes7.com.br");
+    automationConfig.porta = doc["porta"] | (doc["port"] | 0);
     automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
     automationConfig.modalidade = doc["modalidade"] | "";
     automationConfig.campeonato = doc["campeonato"] | "";
