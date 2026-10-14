@@ -33,6 +33,8 @@ struct AutomationConfig {
   bool active;
   String mode;
   String dominio;
+  int porta;
+  String prefixo;
   String modalidade;
   String campeonato;
   String partida;

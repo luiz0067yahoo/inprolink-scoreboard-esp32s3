@@ -74,7 +74,29 @@ bool checkAuthRole(String requiredRole) {
   return role == requiredRole;
 }
 
+void handleCaptivePortalRedirect() {
+  String target = "http://placar.local";
+  if (wifiConfig.httpPort != 80) {
+    target += ":" + String(wifiConfig.httpPort);
+  }
+  target += "/";
+
+  server->sendHeader("Location", target, true);
+  server->sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  server->sendHeader("Pragma", "no-cache");
+  server->sendHeader("Expires", "-1");
+  server->send(302, "text/html", "<!DOCTYPE html><html><head><meta http-equiv='refresh' content='0;url=" + target + "'></head><body>Redirecionando para <a href='" + target + "'>" + target + "</a></body></html>");
+}
+
 void handleRoot() { 
+  String host = server->hostHeader();
+  if (host.indexOf("192.168.4.1") >= 0) {
+    String target = (wifiConfig.httpPort == 80) ? "http://placar.local/" : ("http://placar.local:" + String(wifiConfig.httpPort) + "/");
+    server->sendHeader("Location", target, true);
+    server->send(302, "text/plain", "");
+    return;
+  }
+
   if (checkAuth()) {
     server->sendHeader("Location", "/painel.html");
     server->send(302, "text/plain", "");
@@ -456,6 +478,8 @@ void handleAutomationConfig() {
   automationConfig.active = doc["active"] | false;
   automationConfig.mode = doc["mode"] | "automatico";
   automationConfig.dominio = cleanDomain(doc["dominio"] | "esporte7.com.br");
+  automationConfig.porta = doc["porta"] | (doc["port"] | 8080);
+  automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
   automationConfig.modalidade = doc["modalidade"] | "";
   automationConfig.campeonato = doc["campeonato"] | "";
   automationConfig.partida = doc["partida"] | "";
@@ -496,6 +520,8 @@ void handleAutomationStatus() {
   doc["active"]     = automationConfig.active;
   doc["mode"]       = automationConfig.mode;
   doc["dominio"]    = automationConfig.dominio;
+  doc["porta"]      = automationConfig.porta;
+  doc["prefixo"]    = automationConfig.prefixo;
   doc["modalidade"] = automationConfig.modalidade;
   doc["campeonato"] = automationConfig.campeonato;
   doc["partida"]    = automationConfig.partida;
@@ -539,65 +565,173 @@ String urlEncode(String str) {
 
 String cleanDomain(String d) {
   d.trim();
-  if (d.startsWith("https://")) d = d.substring(8);
-  else if (d.startsWith("http://")) d = d.substring(7);
   while (d.endsWith("/")) d = d.substring(0, d.length() - 1);
   return d;
+}
+
+String buildApiUrl(String baseInput, String targetPath) {
+  baseInput.trim();
+  bool isHttps = true;
+  if (baseInput.startsWith("http://")) {
+    isHttps = false;
+    baseInput = baseInput.substring(7);
+  } else if (baseInput.startsWith("https://")) {
+    isHttps = true;
+    baseInput = baseInput.substring(8);
+  }
+  
+  while (baseInput.endsWith("/")) {
+    baseInput = baseInput.substring(0, baseInput.length() - 1);
+  }
+  
+  String prefix = automationConfig.prefixo.length() > 0 ? automationConfig.prefixo : "/api/";
+  if (!prefix.startsWith("/")) prefix = "/" + prefix;
+  if (!prefix.endsWith("/")) prefix = prefix + "/";
+
+  // Se baseInput já termina com /api, remove para evitar duplicação (/api/api/...)
+  if (baseInput.endsWith("/api")) {
+    baseInput = baseInput.substring(0, baseInput.length() - 4);
+    while (baseInput.endsWith("/")) {
+      baseInput = baseInput.substring(0, baseInput.length() - 1);
+    }
+  }
+  
+  if (targetPath.startsWith("/")) {
+    targetPath = targetPath.substring(1);
+  }
+  if (targetPath.startsWith("api/")) {
+    targetPath = targetPath.substring(4);
+  }
+  
+  String proto = isHttps ? "https://" : "http://";
+  return proto + baseInput + prefix + targetPath;
 }
 
 // Proxy Endpoint to Query External Domain from ESP32 to prevent CORS issues
 void handleProxy() {
   if (!checkAuthRole("Gerente")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
   String domain = cleanDomain(server->arg("domain"));
+  String port = server->arg("port");
+  if (port == "" && server->hasArg("porta")) port = server->arg("porta");
+  if (port == "" && automationConfig.porta > 0) port = String(automationConfig.porta);
+  if (port == "") port = "8080";
+  
   if (domain == "") {
-    server->send(400, "application/json", "{\"error\":\"domain is required\"}");
-    return;
+    if (automationConfig.dominio != "") {
+      domain = cleanDomain(automationConfig.dominio);
+    } else {
+      domain = "esporte7.com.br";
+    }
   }
   
-  String uri = server->uri();
-  String targetPath = "";
-  if (uri.endsWith("modalidades")) {
-    targetPath = "/api/sports";
-  } else if (uri.endsWith("campeonatos")) {
-    targetPath = "/api/clubs/toledao/championships?sport_id=" + urlEncode(server->arg("modalidade"));
-  } else if (uri.endsWith("partidas")) {
-    targetPath = "/api/championships/" + urlEncode(server->arg("campeonato")) + "/matches";
+  // Se o domínio informado não tiver porta explícita, anexa a porta informada
+  int colonIdx = domain.indexOf(':', domain.startsWith("http") ? 8 : 0);
+  if (colonIdx == -1 && port.length() > 0) {
+    domain += ":" + port;
+  }
+  
+  String url = "";
+  if (server->hasArg("url")) {
+    url = server->arg("url");
   } else {
-    server->send(404, "application/json", "{\"error\":\"not found\"}");
-    return;
+    String uri = server->uri();
+    String targetPath = "";
+    if (uri.endsWith("modalidades")) {
+      targetPath = "modalidades";
+    } else if (uri.endsWith("sports")) {
+      targetPath = "sports";
+    } else if (uri.endsWith("campeonatos")) {
+      String modId = server->hasArg("modalidade") ? server->arg("modalidade") : server->arg("sport_id");
+      targetPath = "campeonatos";
+      if (modId.length() > 0) {
+        targetPath += "?modalidade=" + urlEncode(modId);
+      }
+    } else if (uri.indexOf("championships") >= 0 && !uri.endsWith("/matches")) {
+      String sportId = server->hasArg("sport_id") ? server->arg("sport_id") : server->arg("modalidade");
+      targetPath = "clubs/toledao/championships";
+      if (sportId.length() > 0) {
+        targetPath += "?sport_id=" + urlEncode(sportId);
+      }
+    } else if (uri.endsWith("partidas")) {
+      String campId = server->hasArg("campeonato") ? server->arg("campeonato") : server->arg("championship_id");
+      targetPath = "partidas";
+      if (campId.length() > 0) {
+        targetPath += "?campeonato=" + urlEncode(campId);
+      }
+    } else if (uri.indexOf("matches") >= 0) {
+      String campId = "";
+      if (uri.startsWith("/api/championships/")) {
+        int start = 19; // comprimento de "/api/championships/"
+        int end = uri.indexOf("/matches", start);
+        if (end > start) {
+          campId = uri.substring(start, end);
+        }
+      }
+      if (campId == "") {
+        campId = server->hasArg("campeonato") ? server->arg("campeonato") : server->arg("championship_id");
+      }
+      targetPath = "championships/" + urlEncode(campId) + "/matches";
+    } else {
+      server->send(404, "application/json", "{\"error\":\"not found\"}");
+      return;
+    }
+    url = buildApiUrl(domain, targetPath);
   }
-  
-  WiFiClientSecure client;
-  client.setInsecure(); // Disable HTTPS certificate check for flexibility
-  client.setTimeout(3);
+  Serial.print("Proxy request: ");
+  Serial.println(url);
   
   HTTPClient http;
   http.setTimeout(3000);
-  String url = "https://" + domain + targetPath;
-  Serial.print("Proxy SSL GET: ");
-  Serial.println(url);
+  int httpCode = -1;
   
-  http.begin(client, url);
-  int httpCode = http.GET();
-  
-  if (httpCode == HTTP_CODE_OK) {
-    server->send(200, "application/json", http.getString());
-  } else {
-    // Fallback to plain HTTP
+  if (url.startsWith("https://")) {
+    WiFiClientSecure client;
+    client.setInsecure(); // Disable HTTPS certificate check for flexibility
+    client.setTimeout(3);
+    http.begin(client, url);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
+    httpCode = http.GET();
+    
+    if (httpCode == HTTP_CODE_OK) {
+      server->send(200, "application/json", http.getString());
+      http.end();
+      return;
+    }
     http.end();
-    WiFiClient plainClient;
-    String plainUrl = "http://" + domain + targetPath;
-    Serial.print("Proxy HTTP GET fallback: ");
+    
+    // Fallback: tentar em HTTP puro se HTTPS falhar (ex: porta 8080 sem SSL)
+    String plainUrl = "http://" + url.substring(8);
+    Serial.print("Proxy HTTP fallback: ");
     Serial.println(plainUrl);
+    WiFiClient plainClient;
+    plainClient.setTimeout(3);
     http.begin(plainClient, plainUrl);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
     httpCode = http.GET();
     if (httpCode == HTTP_CODE_OK) {
       server->send(200, "application/json", http.getString());
-    } else {
-      server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy query failed\"}");
+      http.end();
+      return;
     }
+    http.end();
+  } else {
+    WiFiClient plainClient;
+    plainClient.setTimeout(3);
+    http.begin(plainClient, url);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
+    httpCode = http.GET();
+    if (httpCode == HTTP_CODE_OK) {
+      server->send(200, "application/json", http.getString());
+      http.end();
+      return;
+    }
+    http.end();
   }
-  http.end();
+  
+  server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy query failed\"}");
 }
 
 // Proxy Endpoint for POST Requests
@@ -624,39 +758,64 @@ void handleProxyPost() {
   }
   
   String payload = server->hasArg("plain") ? server->arg("plain") : "";
-  
-  WiFiClientSecure client;
-  client.setInsecure();
-  client.setTimeout(3);
+  String url = buildApiUrl(domain, targetPath);
+  Serial.print("Proxy POST: ");
+  Serial.println(url);
   
   HTTPClient http;
   http.setTimeout(3000);
-  String url = "https://" + domain + targetPath;
-  Serial.print("Proxy SSL POST: ");
-  Serial.println(url);
+  int httpCode = -1;
   
-  http.begin(client, url);
-  http.addHeader("Content-Type", "application/json");
-  int httpCode = http.POST(payload);
-  
-  if (httpCode >= 200 && httpCode < 300) {
-    server->send(httpCode, "application/json", http.getString());
-  } else {
-    http.end();
-    WiFiClient plainClient;
-    String plainUrl = "http://" + domain + targetPath;
-    Serial.print("Proxy HTTP POST fallback: ");
-    Serial.println(plainUrl);
-    http.begin(plainClient, plainUrl);
+  if (url.startsWith("https://")) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    client.setTimeout(3);
+    http.begin(client, url);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
     http.addHeader("Content-Type", "application/json");
     httpCode = http.POST(payload);
     if (httpCode >= 200 && httpCode < 300) {
       server->send(httpCode, "application/json", http.getString());
-    } else {
-      server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy POST query failed\"}");
+      http.end();
+      return;
     }
+    http.end();
+    
+    // Fallback: tentar em HTTP puro se HTTPS falhar
+    String plainUrl = "http://" + url.substring(8);
+    Serial.print("Proxy HTTP POST fallback: ");
+    Serial.println(plainUrl);
+    WiFiClient plainClient;
+    plainClient.setTimeout(3);
+    http.begin(plainClient, plainUrl);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Content-Type", "application/json");
+    httpCode = http.POST(payload);
+    if (httpCode >= 200 && httpCode < 300) {
+      server->send(httpCode, "application/json", http.getString());
+      http.end();
+      return;
+    }
+    http.end();
+  } else {
+    WiFiClient plainClient;
+    plainClient.setTimeout(3);
+    http.begin(plainClient, url);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Content-Type", "application/json");
+    httpCode = http.POST(payload);
+    if (httpCode >= 200 && httpCode < 300) {
+      server->send(httpCode, "application/json", http.getString());
+      http.end();
+      return;
+    }
+    http.end();
   }
-  http.end();
+  
+  server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy POST query failed\"}");
 }
 
 // ==========================================
@@ -882,21 +1041,37 @@ void pollScoreboardAPI() {
   if (millis() - lastPollMillis < 3000) return;
   lastPollMillis = millis();
   
-  WiFiClientSecure client;
-  client.setInsecure();
-  client.setTimeout(2);
+  String dom = cleanDomain(automationConfig.dominio);
+  if (dom == "") dom = "esporte7.com.br";
+  int colonIdx = dom.indexOf(':', dom.startsWith("http") ? 8 : 0);
+  if (colonIdx == -1 && automationConfig.porta > 0) {
+    dom += ":" + String(automationConfig.porta);
+  }
+  String url = buildApiUrl(dom, "/api/public/matches/" + urlEncode(automationConfig.partida));
   
-  HTTPClient http;
-  http.setTimeout(2000);
-  String cleanDom = cleanDomain(automationConfig.dominio);
-  // Use new endpoint: /api/public/matches/{partida_id}
-  String url = "https://" + cleanDom + "/api/public/matches/" + urlEncode(automationConfig.partida);
-  
-  Serial.print("Poller request (SSL): ");
+  Serial.print("Poller request: ");
   Serial.println(url);
   
-  http.begin(client, url);
-  int httpCode = http.GET();
+  int httpCode = -1;
+  HTTPClient http;
+  http.setTimeout(2500);
+
+  if (url.startsWith("https://")) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    client.setTimeout(2);
+    http.begin(client, url);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
+    httpCode = http.GET();
+  } else {
+    WiFiClient plainClient;
+    plainClient.setTimeout(2);
+    http.begin(plainClient, url);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
+    httpCode = http.GET();
+  }
   
   auto processResponse = [&](String payload) {
     DynamicJsonDocument doc(4096);
@@ -995,18 +1170,18 @@ void pollScoreboardAPI() {
   if (httpCode == HTTP_CODE_OK) {
     String payload = http.getString();
     processResponse(payload);
-  } else {
-    // Fallback to plain HTTP poller
+  } else if (url.startsWith("https://")) {
+    // Fallback para HTTP puro se HTTPS falhar
     http.end();
+    String plainUrl = "http://" + url.substring(8);
     WiFiClient plainClient;
     plainClient.setTimeout(2);
-    String plainUrl = "http://" + cleanDom + "/api/public/matches/" + urlEncode(automationConfig.partida);
-    
     Serial.print("Poller request (HTTP fallback): ");
     Serial.println(plainUrl);
     
     http.begin(plainClient, plainUrl);
-    http.setTimeout(2000);
+    http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
+    http.addHeader("Accept", "application/json, text/plain, */*");
     httpCode = http.GET();
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();

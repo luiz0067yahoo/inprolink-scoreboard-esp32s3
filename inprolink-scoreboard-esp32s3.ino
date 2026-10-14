@@ -64,6 +64,8 @@ void setup() {
     automationConfig.active = false;
     automationConfig.mode = "automatico";
     automationConfig.dominio = "esporte7.com.br";
+    automationConfig.porta = 8080;
+    automationConfig.prefixo = "/api/";
     automationConfig.modalidade = "";
     automationConfig.campeonato = "";
     automationConfig.partida = "";
@@ -75,6 +77,8 @@ void setup() {
     automationConfig.active = doc["active"] | false;
     automationConfig.mode = doc["mode"] | "automatico";
     automationConfig.dominio = cleanDomain(doc["dominio"] | "esporte7.com.br");
+    automationConfig.porta = doc["porta"] | (doc["port"] | 8080);
+    automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
     automationConfig.modalidade = doc["modalidade"] | "";
     automationConfig.campeonato = doc["campeonato"] | "";
     automationConfig.partida = doc["partida"] | "";
@@ -183,11 +187,17 @@ void setup() {
   server->on("/api/automation/mode",   HTTP_POST, handleAutomationMode);
   server->on("/api/automation/status", HTTP_GET,  handleAutomationStatus);
   
-  server->on("/api/proxy/modalidades", HTTP_GET, handleProxy);
+  // server->on("/api/modalidades", HTTP_GET, handleProxy); (Removido a pedido: usar direto https://esporte7.com.br:8080/api/modalidades)
+  server->on("/api/campeonatos", HTTP_GET, handleProxy);
+  server->on("/api/partidas", HTTP_GET, handleProxy);
+  server->on("/api/sports", HTTP_GET, handleProxy);
+  server->on("/api/clubs/toledao/championships", HTTP_GET, handleProxy);
+  server->on("/api/proxy/sports", HTTP_GET, handleProxy);
   server->on("/api/proxy/campeonatos", HTTP_GET, handleProxy);
   server->on("/api/proxy/partidas", HTTP_GET, handleProxy);
   server->on("/api/proxy/etapas", HTTP_GET, handleProxy);
   server->on("/api/proxy/rodadas", HTTP_GET, handleProxy);
+  server->on("/api/proxy", HTTP_GET, handleProxy);
   
   // POST routes for pushing data (gols, updates)
   server->on("/api/proxy_post/gols", HTTP_POST, handleProxyPost);
@@ -198,15 +208,39 @@ void setup() {
   server->on("/api/state", HTTP_GET, handleScoreboardState);
   server->on("/api/scoreboard/action", HTTP_POST, handleScoreboardAction);
   
+  // Rotas de detecção de Captive Portal (Android, Apple iOS/macOS, Windows, Firefox/Chrome)
+  server->on("/generate_204", handleCaptivePortalRedirect);
+  server->on("/gen_204", handleCaptivePortalRedirect);
+  server->on("/hotspot-detect.html", handleCaptivePortalRedirect);
+  server->on("/library/test/success.html", handleCaptivePortalRedirect);
+  server->on("/connecttest.txt", handleCaptivePortalRedirect);
+  server->on("/ncsi.txt", handleCaptivePortalRedirect);
+  server->on("/success.txt", handleCaptivePortalRedirect);
+  server->on("/canonical.html", handleCaptivePortalRedirect);
+  server->on("/redirect", handleCaptivePortalRedirect);
+
   // Captive Portal / 404 fallback redirect
   server->onNotFound([]() {
-    String host = server->hostHeader();
-    if (WiFi.status() != WL_CONNECTED || host.indexOf("192.168.4.1") >= 0 || host.indexOf("placar") >= 0) {
-      server->sendHeader("Location", String("http://192.168.4.1/"), true);
-      server->send(302, "text/plain", "");
-    } else {
-      server->send(404, "text/plain", "Pagina nao encontrada");
+    String uri = server->uri();
+    
+    // Suporte dinâmico para rotas de partidas da API (/api/championships/{id}/matches)
+    if (uri.startsWith("/api/championships/") && uri.endsWith("/matches")) {
+      handleProxy();
+      return;
     }
+    
+    String host = server->hostHeader();
+    
+    // Se a requisição não vier de placar.local (ex: probe de sistema operacional ou IP direto), redireciona para http://placar.local/
+    if (host.indexOf("placar.local") == -1) {
+      handleCaptivePortalRedirect();
+      return;
+    }
+    
+    // Se já estiver em placar.local mas a rota não existir, redireciona para a raiz
+    String target = (wifiConfig.httpPort == 80) ? "http://placar.local/" : ("http://placar.local:" + String(wifiConfig.httpPort) + "/");
+    server->sendHeader("Location", target, true);
+    server->send(302, "text/plain", "");
   });
 
   server->begin();
@@ -246,16 +280,14 @@ void loop() {
     updatePhysicalDisplays();
   }
   
-  // Ocultar/desativar a rede AP 'esporte7system' quando conectado ao Wi-Fi local;
-  // Reativar caso a conexão seja perdida para permitir contingência/reconfiguração
+  // Manter o ponto de acesso AP 'esporte7system' sempre ativo em conjunto com a rede local (WIFI_AP_STA),
+  // garantindo que qualquer usuário conectando ao Wi-Fi abra diretamente http://placar.local/
   static bool lastConnected = false;
   bool isConnected = (WiFi.status() == WL_CONNECTED);
   if (isConnected != lastConnected) {
     lastConnected = isConnected;
     if (isConnected) {
-      Serial.printf("[Wi-Fi] Conectado com sucesso! IP local: %s\n", WiFi.localIP().toString().c_str());
-      Serial.println("[Wi-Fi] Ocultando/desativando ponto de acesso 'esporte7system'...");
-      WiFi.enableAP(false);
+      Serial.printf("[Wi-Fi] Conectado à rede local com sucesso! IP local: %s\n", WiFi.localIP().toString().c_str());
 
       // Re-vincular mDNS ao IP da rede local
       MDNS.end();
@@ -266,10 +298,7 @@ void loop() {
         Serial.printf("[mDNS] Ativo na rede local: http://placar.local:%d\n", wifiConfig.httpPort);
       }
     } else {
-      Serial.println("[Wi-Fi] Desconectado da rede local! Reativando ponto de acesso 'esporte7system'...");
-      WiFi.enableAP(true);
-      WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
-      WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
+      Serial.println("[Wi-Fi] Desconectado da rede local! Ponto de acesso 'esporte7system' segue ativo.");
       dnsServer.start(53, "*", IPAddress(192, 168, 4, 1));
 
       MDNS.end();

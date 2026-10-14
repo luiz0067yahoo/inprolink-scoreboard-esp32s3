@@ -9,6 +9,7 @@ void sendSingleState(uint8_t num);
 void broadcastState();
 void pollScoreboardAPI();
 
+void handleCaptivePortalRedirect();
 void handleRoot();
 void handleUserAdm();
 void handleLanConfig();
@@ -31,6 +32,7 @@ void handleAutomationMode();
 void handleAutomationStatus();
 String urlEncode(String str);
 String cleanDomain(String d);
+String buildApiUrl(String baseInput, String targetPath);
 void handleProxy();
 void handleProxyPost();
 void handleScoreboardState();

@@ -2106,7 +2106,11 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </div>
       <div class="input-group">
         <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
-        <input type="text" id="domainInput" class="input-field" placeholder="Ex: https://esporte7.com.br/ ou 192.168.1.100" value="https://esporte7.com.br/">
+        <input type="text" id="domainInput" class="input-field" placeholder="Ex: esporte7.com.br ou 192.168.1.100" value="esporte7.com.br">
+      </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label for="portInput">Porta do Servidor</label>
+        <input type="number" id="portInput" class="input-field" placeholder="Ex: 8080" value="8080">
       </div>
     </div>
 
@@ -2298,14 +2302,29 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       });
     }
 
+    function cleanDomain(d, port = '') {
+      if (!d) d = 'esporte7.com.br';
+      d = d.trim();
+      d = d.replace(/^https?:\/\//i, '');
+      d = d.replace(/\/+$/, '');
+      d = d.replace(/\/api$/, '');
+      d = d.replace(/\/+$/, '');
+      if (port && port !== '' && !d.includes(':')) {
+        d = d + ':' + port;
+      }
+      return d;
+    }
+
     function fetchModalidades(domain, callback) {
-      fetch(`/api/proxy/modalidades?domain=${encodeURIComponent(domain)}`)
+      const cleanDom = cleanDomain(domain);
+      fetch(`/api/modalidades?domain=${encodeURIComponent(cleanDom)}`)
       .then(r => {
         if (!r.ok) throw new Error('API erro');
         return r.json();
       })
       .then(data => {
-        const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Esporte' }));
+        const list = Array.isArray(data) ? data : (data.data || data.modalidades || data.sports || []);
+        const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Modalidade' }));
         populateStepOptions('step-2', 'modalidade', mapped, '⚽');
         callback();
       })
@@ -2324,13 +2343,15 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     // Proxy endpoints
     function fetchCampeonatos(domain, mod, callback) {
-      fetch(`/api/proxy/campeonatos?domain=${encodeURIComponent(domain)}&modalidade=${encodeURIComponent(mod)}`)
+      const cleanDom = cleanDomain(domain);
+      fetch(`/api/campeonatos?domain=${encodeURIComponent(cleanDom)}&modalidade=${encodeURIComponent(mod)}`)
       .then(r => {
         if (!r.ok) throw new Error('API erro');
         return r.json();
       })
       .then(data => {
-        const mapped = data.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
+        const list = Array.isArray(data) ? data : (data.data || data.campeonatos || data.championships || []);
+        const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Campeonato' }));
         populateStepOptions('step-3', 'campeonato', mapped, '🏆');
         callback();
       })
@@ -2346,16 +2367,19 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     function fetchPartidas(domain, camp, callback) {
-      fetch(`/api/proxy/partidas?domain=${encodeURIComponent(domain)}&campeonato=${encodeURIComponent(camp)}`)
+      const cleanDom = cleanDomain(domain);
+      fetch(`/api/partidas?domain=${encodeURIComponent(cleanDom)}&campeonato=${encodeURIComponent(camp)}`)
       .then(r => {
         if (!r.ok) throw new Error('API erro');
         return r.json();
       })
       .then(data => {
-        const mapped = data.map(item => {
-          let home = (item.home_team && item.home_team.name) ? item.home_team.name : 'TBA';
-          let away = (item.away_team && item.away_team.name) ? item.away_team.name : 'TBA';
-          return { id: item.id, nome: home + ' x ' + away };
+        const list = Array.isArray(data) ? data : (data.data || data.partidas || data.matches || []);
+        const mapped = list.map(item => {
+          let home = (item.home_team && item.home_team.name) ? item.home_team.name : (item.time_casa || item.home_team_name || 'TBA');
+          let away = (item.away_team && item.away_team.name) ? item.away_team.name : (item.time_visitante || item.away_team_name || 'TBA');
+          let label = item.nome || (home + ' x ' + away);
+          return { id: item.id, nome: label };
         });
         populateStepOptions('step-4', 'partida', mapped, '🏁');
         callback();
@@ -2377,20 +2401,22 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
       if (delta > 0) {
         const domain = document.getElementById('domainInput').value.trim();
+        const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
         if (!domain) {
           showToast('Por favor, informe o domínio.', 'error');
           return;
         }
-        wizardData.dominio = domain;
+        wizardData.dominio = cleanDomain(domain, port);
+        wizardData.porta = port ? parseInt(port, 10) : 8080;
 
         if (currentStep === 1) {
-          fetchModalidades(domain, () => proceed());
+          fetchModalidades(wizardData.dominio, () => proceed());
           return;
         } else if (currentStep === 2) {
-          fetchCampeonatos(domain, wizardData.modalidade, () => proceed());
+          fetchCampeonatos(wizardData.dominio, wizardData.modalidade, () => proceed());
           return;
         } else if (currentStep === 3) {
-          fetchPartidas(domain, wizardData.campeonato, () => proceed());
+          fetchPartidas(wizardData.dominio, wizardData.campeonato, () => proceed());
           return;
         }
       }
@@ -2431,6 +2457,8 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     function finishWizard() {
       wizardData.mode = "automatico";
+      const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '8080';
+      wizardData.porta = port ? parseInt(port, 10) : 8080;
       fetch('/api/automation/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2472,6 +2500,26 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         showToast('Erro ao salvar. Verifique a conexão com o ESP32.', 'error');
       });
     }
+
+    // Carregar configurações de domínio e porta salvas no ESP32
+    fetch('/api/automation/status')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.dominio) {
+          let dom = data.dominio;
+          let p = data.porta || 8080;
+          if (dom.includes(':')) {
+            const parts = dom.split(':');
+            dom = parts[0];
+            p = parseInt(parts[1], 10) || p;
+          }
+          const domInput = document.getElementById('domainInput');
+          if (domInput) domInput.value = dom;
+          const portInput = document.getElementById('portInput');
+          if (portInput) portInput.value = p;
+        }
+      })
+      .catch(e => {});
   </script>
 </body>
 </html>
