@@ -243,11 +243,6 @@ const char login_html[] PROGMEM = R"rawliteral(
         </div>
       </div>
 
-      <div class="credentials-box">
-        ℹ️ <strong>Acesso Padrão:</strong><br>
-        Usuário: <span style="color: #ff1a1a;">esporte7</span> | Senha: <span style="color: #ff1a1a;">link@link</span>
-      </div>
-
       <div class="error-msg" id="errorMsg">
         ⚠️ Usuário ou senha incorretos!
       </div>
