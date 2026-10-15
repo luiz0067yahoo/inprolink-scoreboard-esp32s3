@@ -74,16 +74,30 @@ void setup() {
   } else {
     DynamicJsonDocument doc(1024);
     deserializeJson(doc, autJson);
+    auto getStringField = [&](const char* k1, const char* k2 = nullptr, const char* k3 = nullptr) -> String {
+      const char* keys[3] = { k1, k2, k3 };
+      for (int i = 0; i < 3; i++) {
+        if (keys[i] && doc.containsKey(keys[i])) {
+          if (doc[keys[i]].is<int>()) return String(doc[keys[i]].as<int>());
+          if (doc[keys[i]].is<long>()) return String(doc[keys[i]].as<long>());
+          const char* s = doc[keys[i]] | "";
+          if (s && strlen(s) > 0) return String(s);
+          return doc[keys[i]].as<String>();
+        }
+      }
+      return "";
+    };
+
     automationConfig.active = doc["active"] | false;
     automationConfig.mode = doc["mode"] | "automatico";
     automationConfig.dominio = cleanDomain(doc["dominio"] | "esportes7.com.br");
     automationConfig.porta = doc["porta"] | (doc["port"] | 0);
     automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
-    automationConfig.modalidade = doc["modalidade"] | "";
-    automationConfig.campeonato = doc["campeonato"] | (doc["campeonatoId"] | (doc["championship_id"] | ""));
-    automationConfig.partida = doc["partida"] | (doc["partidaId"] | (doc["match_id"] | ""));
-    automationConfig.etapa = doc["etapa"] | "";
-    automationConfig.rodada = doc["rodada"] | (doc["rodadaId"] | (doc["round_id"] | ""));
+    automationConfig.modalidade = getStringField("modalidade");
+    automationConfig.campeonato = getStringField("campeonato", "campeonatoId", "championship_id");
+    automationConfig.partida = getStringField("partida", "partidaId", "match_id");
+    automationConfig.etapa = getStringField("etapa");
+    automationConfig.rodada = getStringField("rodada", "rodadaId", "round_id");
   }
   
   // Initialize WS2812B NeoPixel strips for the 18 digits and display 0 on all of them

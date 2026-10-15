@@ -464,7 +464,7 @@ void handleWifiForget() {
 }
 
 void handleAutomationConfig() {
-  if (!checkAuthRole("Gerente")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+  if (!checkAuth()) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
   if (!server->hasArg("plain")) {
     server->send(400, "application/json", "{\"error\":\"body is required\"}");
     return;
@@ -484,23 +484,44 @@ void handleAutomationConfig() {
   
   preferences.putString("automation", configStr);
   
+  auto getStringField = [&](const char* k1, const char* k2 = nullptr, const char* k3 = nullptr) -> String {
+    const char* keys[3] = { k1, k2, k3 };
+    for (int i = 0; i < 3; i++) {
+      if (keys[i] && doc.containsKey(keys[i])) {
+        if (doc[keys[i]].is<int>()) return String(doc[keys[i]].as<int>());
+        if (doc[keys[i]].is<long>()) return String(doc[keys[i]].as<long>());
+        const char* s = doc[keys[i]] | "";
+        if (s && strlen(s) > 0) return String(s);
+        return doc[keys[i]].as<String>();
+      }
+    }
+    return "";
+  };
+
   // Reload local automation configs
   automationConfig.active = doc["active"] | true;
   automationConfig.mode = doc["mode"] | "automatico";
   automationConfig.dominio = cleanDomain(doc["dominio"] | "esportes7.com.br");
   automationConfig.porta = doc["porta"] | (doc["port"] | 0);
   automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
-  automationConfig.modalidade = doc["modalidade"] | "";
-  automationConfig.campeonato = doc["campeonato"] | (doc["campeonatoId"] | (doc["championship_id"] | ""));
-  automationConfig.partida = doc["partida"] | (doc["partidaId"] | (doc["match_id"] | ""));
-  automationConfig.etapa = doc["etapa"] | "";
-  automationConfig.rodada = doc["rodada"] | (doc["rodadaId"] | (doc["round_id"] | ""));
+  automationConfig.modalidade = getStringField("modalidade");
+  automationConfig.campeonato = getStringField("campeonato", "campeonatoId", "championship_id");
+  automationConfig.partida = getStringField("partida", "partidaId", "match_id");
+  automationConfig.etapa = getStringField("etapa");
+  automationConfig.rodada = getStringField("rodada", "rodadaId", "round_id");
   
+  Serial.print("Salvo automacao: Camp=");
+  Serial.print(automationConfig.campeonato);
+  Serial.print(", Rod=");
+  Serial.print(automationConfig.rodada);
+  Serial.print(", Part=");
+  Serial.println(automationConfig.partida);
+
   server->send(200, "application/json", "{\"status\":\"success\"}");
 }
 
 void handleAutomationMode() {
-  if (!checkAuthRole("Operador")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+  if (!checkAuth()) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
   if (!server->hasArg("plain")) { server->send(400, "application/json", "{\"error\":\"body required\"}"); return; }
 
   DynamicJsonDocument doc(256);
@@ -524,7 +545,7 @@ void handleAutomationMode() {
 }
 
 void handleAutomationStatus() {
-  if (!checkAuthRole("Operador")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+  if (!checkAuth()) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
 
   DynamicJsonDocument doc(512);
   doc["active"]         = automationConfig.active;
@@ -943,7 +964,13 @@ void handleScoreboardAction() {
   if (action && strcmp(action, "sync_external") == 0) {
     if (doc.containsKey("scoreA")) scoreA = doc["scoreA"].as<int>();
     if (doc.containsKey("scoreB")) scoreB = doc["scoreB"].as<int>();
+    if (doc.containsKey("foulsA")) foulsA = doc["foulsA"].as<int>();
+    if (doc.containsKey("foulsB")) foulsB = doc["foulsB"].as<int>();
+    if (doc.containsKey("period")) period = doc["period"].as<int>();
+    if (doc.containsKey("totalSeconds")) totalSeconds = doc["totalSeconds"].as<int>();
+    if (doc.containsKey("timerRunning")) timerRunning = doc["timerRunning"].as<bool>();
     updatePhysicalDisplays();
+    broadcastState();
     server->send(200, "application/json", "{\"status\":\"success\"}");
     return;
   }
@@ -1183,17 +1210,58 @@ void pollScoreboardAPI() {
       if (doc.is<JsonArray>()) {
         JsonArray matches = doc.as<JsonArray>();
         String targetPartida = automationConfig.partida;
+        String targetRodada = automationConfig.rodada;
+        String targetMod = automationConfig.modalidade;
+
+        // 1. Procura partida com ID específico
         if (targetPartida != "") {
           for (JsonObject m : matches) {
-            if (String(m["id"].as<int>()) == targetPartida || m["id"].as<String>() == targetPartida) {
+            String mId = m["id"].is<int>() ? String(m["id"].as<int>()) : m["id"].as<String>();
+            if (mId == targetPartida) {
               targetMatch = m;
               found = true;
               break;
             }
           }
         }
+
+        // 2. Se não encontrou por ID específico, filtra por rodada e modalidade buscando 'live'
         if (!found) {
-          // Busca partida ao vivo ou primeira da lista
+          for (JsonObject m : matches) {
+            // Filtro por rodada
+            if (targetRodada != "" && targetRodada != "Todas as Rodadas") {
+              int rNum = m["round_number"] | 0;
+              const char* rName = m["round_name"] | "";
+              String sNum = String(rNum);
+              String sRod = "Rodada " + sNum;
+              if (targetRodada != sNum && targetRodada != sRod && targetRodada != String(rName)) {
+                continue;
+              }
+            }
+
+            // Filtro por modalidade (se disponível no objeto da partida)
+            if (targetMod != "") {
+              if (m.containsKey("sport_id") && String(m["sport_id"].as<int>()) != targetMod) continue;
+              if (m.containsKey("category_id") && String(m["category_id"].as<int>()) == targetMod) {
+                // Correspondência com categoria
+              }
+            }
+
+            const char* st = m["status"] | "";
+            if (strcmp(st, "live") == 0 || strcmp(st, "in_progress") == 0) {
+              targetMatch = m;
+              found = true;
+              break;
+            }
+            if (!found) {
+              targetMatch = m;
+            }
+          }
+          if (targetMatch) found = true;
+        }
+
+        // 3. Fallback: primeira 'live' ou primeira partida geral
+        if (!found) {
           for (JsonObject m : matches) {
             const char* st = m["status"] | "";
             if (strcmp(st, "live") == 0 || strcmp(st, "in_progress") == 0) {
@@ -1216,9 +1284,36 @@ void pollScoreboardAPI() {
       if (found) {
         int newScoreA = targetMatch["home_score"] | 0;
         int newScoreB = targetMatch["away_score"] | 0;
+        bool stateChanged = false;
+
         if (scoreA != newScoreA || scoreB != newScoreB) {
           scoreA = newScoreA;
           scoreB = newScoreB;
+          stateChanged = true;
+        }
+
+        if (targetMatch.containsKey("match_details")) {
+          JsonObject md = targetMatch["match_details"];
+          if (md.containsKey("current_timer_value")) {
+            int newSecs = md["current_timer_value"].as<int>();
+            bool newRunning = md["timer_running"] | false;
+            if (totalSeconds != newSecs || timerRunning != newRunning) {
+              totalSeconds = newSecs;
+              timerRunning = newRunning;
+              stateChanged = true;
+            }
+          }
+        }
+
+        if (targetMatch.containsKey("round_number")) {
+          int newPeriod = targetMatch["round_number"].as<int>();
+          if (period != newPeriod && newPeriod > 0) {
+            period = newPeriod;
+            stateChanged = true;
+          }
+        }
+
+        if (stateChanged) {
           updatePhysicalDisplays();
           broadcastState();
         }

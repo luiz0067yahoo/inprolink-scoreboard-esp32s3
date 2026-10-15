@@ -398,6 +398,24 @@
       </label>
     </div>
 
+    <!-- Banner de Partida Sincronizada com Filtro -->
+    <div id="active-match-banner" style="display: none; background: #111; border: 1px solid #222; border-left: 4px solid #e53935; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; align-items: center; justify-content: space-between; font-size: 0.85rem;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.5px;">AO VIVO</span>
+        <span id="banner-mod-name" style="color: #60a5fa; font-weight: 700;">Modalidade</span>
+        <span style="color: #666;">•</span>
+        <span id="banner-camp-name" style="color: #fff; font-weight: 700;">Campeonato</span>
+        <span style="color: #666;">•</span>
+        <span id="banner-round-name" style="color: #aaa; font-weight: 600;">Rodada</span>
+        <span style="color: #666;">•</span>
+        <span id="banner-match-name" style="color: #4caf50; font-weight: 700;">Partida</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="color: #888; font-size: 0.75rem;">● Sincronizado via API</span>
+        <button onclick="window.location.href='panel_config.html.html'" style="background: #222; border: 1px solid #444; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">⚙️ Trocar</button>
+      </div>
+    </div>
+
     <!-- Linha Superior: Time A, Logo, Time B -->
     <div class="row-top">
       <!-- Time A (3 dígitos) -->
@@ -575,10 +593,19 @@
 
     // Cache da configuração salva no ESP32
     let autoConfigCache = null;
+    try {
+      const local = localStorage.getItem('esporte7_wizard_setup');
+      if (local) autoConfigCache = JSON.parse(local);
+    } catch(e) {}
+
     function refreshAutoConfig() {
       fetch('/api/automation/status')
         .then(r => r.json())
-        .then(data => { autoConfigCache = data; })
+        .then(data => {
+          if (data && typeof data === 'object') {
+            autoConfigCache = Object.assign({}, autoConfigCache || {}, data);
+          }
+        })
         .catch(() => {});
     }
     refreshAutoConfig();
@@ -590,8 +617,18 @@
       if (isFetchingState) return;
       isFetchingState = true;
 
+      // Recupera configuração do cache ou localStorage
+      let cfg = autoConfigCache;
+      if (!cfg) {
+        try {
+          const local = localStorage.getItem('esporte7_wizard_setup');
+          if (local) cfg = JSON.parse(local);
+        } catch(e) {}
+      }
+
       // Rota externa configurada do campeonato (padrão 76)
-      const campId = (autoConfigCache && autoConfigCache.campeonato && autoConfigCache.campeonato !== '10') ? autoConfigCache.campeonato : '76';
+      const campId = (cfg && (cfg.campeonato || cfg.campeonatoId) && (cfg.campeonato !== '10' && cfg.campeonatoId !== '10'))
+                     ? String(cfg.campeonato || cfg.campeonatoId) : '76';
       const targetApiUrl = `https://esportes7.com.br/api/championships/${encodeURIComponent(campId)}/matches`;
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(targetApiUrl)}`;
 
@@ -602,12 +639,61 @@
         })
         .then(matchesList => {
           if (currentPanelMode === 'automatico' && Array.isArray(matchesList) && matchesList.length > 0) {
+            const targetMod = cfg && (cfg.modalidade || cfg.sport_id) ? String(cfg.modalidade || cfg.sport_id).trim() : '';
+            const targetCamp = cfg && (cfg.campeonato || cfg.campeonatoId) ? String(cfg.campeonato || cfg.campeonatoId).trim() : campId;
+            const targetRodada = cfg && (cfg.rodada || cfg.rodadaId) ? String(cfg.rodada || cfg.rodadaId).trim() : '';
+            const targetPartida = cfg && (cfg.partida || cfg.partidaId) ? String(cfg.partida || cfg.partidaId).trim() : '';
+
+            // 1. Filtrar pelo campeonato selecionado
+            let candidates = matchesList;
+            if (targetCamp) {
+              const byCamp = candidates.filter(m => String(m.championship_id) === targetCamp);
+              if (byCamp.length > 0) candidates = byCamp;
+            }
+
+            // 2. Filtrar pela modalidade selecionada (se houver correspondência com category_id, sport_id ou modalidade)
+            if (targetMod) {
+              const byMod = candidates.filter(m => {
+                if (m.sport_id !== undefined && String(m.sport_id) === targetMod) return true;
+                if (m.sport && (String(m.sport.id) === targetMod || (m.sport.name && m.sport.name.toLowerCase() === targetMod.toLowerCase()))) return true;
+                if (m.category_id !== undefined && String(m.category_id) === targetMod) return true;
+                if (m.modalidade && String(m.modalidade).toLowerCase() === targetMod.toLowerCase()) return true;
+                return false;
+              });
+              if (byMod.length > 0) candidates = byMod;
+            }
+
+            // 3. Filtrar pela rodada selecionada (se especificada e diferente de 'Todas as Rodadas')
+            if (targetRodada && targetRodada !== 'Todas as Rodadas') {
+              const byRound = candidates.filter(m => {
+                const rNum = m.round_number !== undefined && m.round_number !== null ? String(m.round_number).trim() : '';
+                const rName = (m.round_name || '').trim().toLowerCase();
+                const gName = (m.group_name || '').trim().toLowerCase();
+                const tRod = targetRodada.trim().toLowerCase();
+
+                if (rNum && (tRod === rNum || tRod === `rodada ${rNum}`)) return true;
+                if (rName && (rName === tRod || tRod.includes(rName) || rName.includes(tRod))) return true;
+                if (gName && (gName === tRod || tRod.includes(gName))) return true;
+
+                const digits = tRod.replace(/\D/g, '');
+                if (digits && rNum === digits) return true;
+                return false;
+              });
+              if (byRound.length > 0) candidates = byRound;
+            }
+
+            // 4. Filtrar pela partida selecionada
             let match = null;
-            if (autoConfigCache && autoConfigCache.partida) {
-              match = matchesList.find(m => String(m.id) === String(autoConfigCache.partida));
+            if (targetPartida) {
+              match = candidates.find(m => String(m.id) === targetPartida);
             }
             if (!match) {
-              match = matchesList.find(m => m.status === 'live' || m.status === 'in_progress') || matchesList[0];
+              // Se não encontrou pelo ID específico, busca partida ao vivo ('live' ou 'in_progress') dentro dos candidatos filtrados
+              match = candidates.find(m => m.status === 'live' || m.status === 'in_progress');
+            }
+            if (!match && candidates.length > 0) {
+              // Fallback para a primeira partida dos candidatos filtrados
+              match = candidates[0];
             }
 
             if (match) {
@@ -619,21 +705,66 @@
                 period: match.round_number || 1
               };
 
-              if (match.events && Array.isArray(match.events)) {
-                const timerEvents = match.events.filter(e => e.event_type === 'timer_control');
+              // Processa cronômetro a partir de match_details (ex: current_timer_value: 555)
+              if (match.match_details && match.match_details.current_timer_value !== undefined) {
+                const secs = parseInt(match.match_details.current_timer_value, 10);
+                const hrs = Math.floor(secs / 3600);
+                const mins = Math.floor((secs % 3600) / 60);
+                const s = secs % 60;
+                stateData.timer = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                stateData.totalSeconds = secs;
+                stateData.timerRunning = match.match_details.timer_running || false;
+              } else if (match.events && Array.isArray(match.events)) {
+                const timerEvents = match.events.filter(e => e.event_type === 'timer_control' || e.type === 'timer_control');
                 if (timerEvents.length > 0) {
                   const lastTimer = timerEvents[timerEvents.length - 1];
-                  if (lastTimer.game_time) stateData.timer = lastTimer.game_time;
+                  const gTime = lastTimer.game_time || lastTimer.minute || '';
+                  if (gTime) stateData.timer = gTime;
                 }
               }
 
+              // Processa faltas dos times a partir dos eventos
+              if (match.events && Array.isArray(match.events)) {
+                const homeId = match.home_team_id || (match.home_team ? match.home_team.id : null);
+                const awayId = match.away_team_id || (match.away_team ? match.away_team.id : null);
+                let fA = 0, fB = 0;
+                match.events.forEach(ev => {
+                  const evType = ev.type || ev.event_type || '';
+                  if (evType.includes('foul') || evType.includes('falta')) {
+                    if (ev.team_id === homeId) fA++;
+                    else if (ev.team_id === awayId) fB++;
+                  }
+                });
+                stateData.foulsA = fA;
+                stateData.foulsB = fB;
+              }
+
               applyScoreboardState(stateData);
+
+              // Atualiza o banner informativo da partida ativa
+              const banner = document.getElementById('active-match-banner');
+              if (banner) {
+                banner.style.display = 'flex';
+                const bMod = document.getElementById('banner-mod-name');
+                const bCamp = document.getElementById('banner-camp-name');
+                const bRound = document.getElementById('banner-round-name');
+                const bMatch = document.getElementById('banner-match-name');
+                if (bMod) bMod.innerText = targetMod ? `Mod: ${targetMod}` : (match.sport ? match.sport.name : 'Modalidade');
+                if (bCamp) bCamp.innerText = `Camp #${targetCamp || '76'}`;
+                if (bRound) bRound.innerText = targetRodada || (match.round_number ? `Rodada ${match.round_number}` : 'Rodada 1');
+                if (bMatch) bMatch.innerText = `${stateData.teamNameA} vs ${stateData.teamNameB}`;
+              }
 
               // Atualiza sincronização com os LEDs físicos do ESP32
               sendScoreboardAction({
                 action: 'sync_external',
                 scoreA: stateData.scoreA,
-                scoreB: stateData.scoreB
+                scoreB: stateData.scoreB,
+                foulsA: stateData.foulsA !== undefined ? stateData.foulsA : 0,
+                foulsB: stateData.foulsB !== undefined ? stateData.foulsB : 0,
+                period: stateData.period,
+                totalSeconds: stateData.totalSeconds !== undefined ? stateData.totalSeconds : totalSeconds,
+                timerRunning: stateData.timerRunning !== undefined ? stateData.timerRunning : false
               });
             }
           }

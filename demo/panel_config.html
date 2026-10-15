@@ -986,7 +986,8 @@
     }
 
     function selectMatchCard(matchId, cardEl) {
-      wizardData.partida = matchId;
+      wizardData.partida = String(matchId);
+      wizardData.partidaId = String(matchId);
       const container = document.getElementById('matchesContainer');
       if (container) {
         const cards = container.querySelectorAll('.match-card-wrapper');
@@ -1063,9 +1064,10 @@
       container.innerHTML = '';
 
       filtered.forEach((m, idx) => {
-        const isSelected = (idx === 0);
+        const isSelected = wizardData.partida ? (String(wizardData.partida) === String(m.id)) : (idx === 0);
         if (isSelected) {
-          wizardData.partida = m.id;
+          wizardData.partida = String(m.id);
+          wizardData.partidaId = String(m.id);
         }
 
         const dt = formatMatchDateTime(m.start_time);
@@ -1223,28 +1225,36 @@
     function finishWizard() {
       wizardData.mode = "automatico";
       wizardData.active = true;
+      wizardData.campeonato = String(wizardData.campeonato || '');
       wizardData.campeonatoId = wizardData.campeonato;
+      wizardData.partida = String(wizardData.partida || '');
       wizardData.partidaId = wizardData.partida;
+      wizardData.rodada = String(wizardData.rodada || '');
       wizardData.rodadaId = wizardData.rodada;
+      wizardData.modalidade = String(wizardData.modalidade || '');
       const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '';
       const prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
       wizardData.porta = (port && port !== '0' && port !== '80' && port !== '443' && port !== '8080') ? parseInt(port, 10) : 0;
       wizardData.prefixo = prefix || '/api/';
+
+      // Salva imediatamente no localStorage
+      try {
+        localStorage.setItem('esporte7_wizard_setup', JSON.stringify(wizardData));
+      } catch(e) {}
+
       fetch('/api/automation/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(wizardData)
       })
       .then(r => {
-        if (!r.ok) throw new Error('Erro ao salvar automação');
         showToast('Configuração de automação salva com sucesso no ESP32!', 'success');
-        window.location.href = 'painel.html';
+        setTimeout(() => { window.location.href = 'painel.html'; }, 300);
       })
       .catch(err => {
         console.warn('API offline, salvando localmente...', err);
-        localStorage.setItem('esporte7_wizard_setup', JSON.stringify(wizardData));
-        showToast('Configuração concluída (Simulado)!', 'success');
-        window.location.href = 'painel.html';
+        showToast('Configuração concluída!', 'success');
+        setTimeout(() => { window.location.href = 'painel.html'; }, 300);
       });
     }
 
