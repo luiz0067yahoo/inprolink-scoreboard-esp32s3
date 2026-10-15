@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Placar Eletrônico - Esporte7 System</title>
 
+  <link rel="icon" href="data:,">
   <style>
     * {
       box-sizing: border-box;
@@ -86,38 +87,58 @@
       background: #111;
       border: 4px solid #333;
       border-radius: 12px;
-      padding: 10px 20px;
+      padding: 8px 18px;
       box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.9), 0 4px 10px rgba(0,0,0,0.5);
       display: flex;
       justify-content: center;
       align-items: center;
+      box-sizing: border-box;
+      min-height: 80px;
+    }
+
+    .row-middle .led-frame {
+      min-height: 110px;
+      padding: 10px 24px;
     }
 
     .led-text {
-      font-family: 'Orbitron', monospace;
+      font-family: 'Orbitron', 'Consolas', 'Courier New', 'Roboto Mono', monospace;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-feature-settings: "tnum" 1;
+      font-feature-settings: "tnum" 1;
       color: #ff1a1a;
       text-shadow: 0 0 12px rgba(255, 26, 26, 0.8), 0 0 25px rgba(255, 0, 0, 0.4);
-      line-height: 1;
+      line-height: 1.1;
     }
 
-    .digits-2 { font-size: 3.8rem; letter-spacing: 4px; }
-    .digits-3 { font-size: 3.5rem; letter-spacing: 3px; }
-    .digits-timer { font-size: 5rem; letter-spacing: 6px; padding: 10px 30px; }
+    .digits-2 { font-size: 3.8rem; letter-spacing: 3px; }
+    .digits-3 { font-size: 3.5rem; letter-spacing: 2px; }
+    .digits-timer { font-size: 5rem; letter-spacing: 3px; }
 
     input.led-text {
       background: transparent;
       border: none;
       outline: none;
       text-align: center;
-      width: 1.5em;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-feature-settings: "tnum" 1;
+      font-feature-settings: "tnum" 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: clip;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+    input.led-text.digits-2 {
+      width: 2.3ch;
     }
     input.led-text.digits-3 {
-      width: 2.2em;
+      width: 3.4ch;
     }
     /* Timer input needs wider width for HH:MM:SS */
     input.led-text.digits-timer {
-      width: 11ch;
-      letter-spacing: 4px;
+      width: 9.2ch;
     }
     input.led-text[readonly] { pointer-events: none; }
 
@@ -507,14 +528,17 @@
     let swapped = false;
     let currentPanelMode = 'automatico';
 
-    // Atualização dos campos da interface mantendo campos em foco intactos
+    // Atualização dos campos da interface mantendo campos em foco intactos e evitando re-renderização desnecessária
     function applyScoreboardState(data) {
       if (!data) return;
       const setVal = (id, val) => {
         const el = document.getElementById(id);
         if (el && document.activeElement !== el) {
           const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
-          el.value = String(val).padStart(padLen, '0');
+          const newVal = String(val).padStart(padLen, '0');
+          if (el.value !== newVal) {
+            el.value = newVal;
+          }
         }
       };
       if (data.scoreA !== undefined) setVal('score-a', data.scoreA);
@@ -525,7 +549,18 @@
 
       const timerEl = document.getElementById('timer-display');
       if (timerEl && document.activeElement !== timerEl && data.timer) {
-        timerEl.value = data.timer;
+        if (timerEl.value !== data.timer) {
+          timerEl.value = data.timer;
+        }
+      }
+      
+      if (data.teamNameA) {
+        const titleA = document.getElementById('title-team-a');
+        if (titleA) titleA.innerText = data.teamNameA.toUpperCase();
+      }
+      if (data.teamNameB) {
+        const titleB = document.getElementById('title-team-b');
+        if (titleB) titleB.innerText = data.teamNameB.toUpperCase();
       }
       
       if (data.totalSeconds !== undefined) {
@@ -538,25 +573,79 @@
       }
     }
 
-    // Atualização automática dos campos via AJAX a cada 1 segundo (SOMENTE no modo automático)
+    // Cache da configuração salva no ESP32
+    let autoConfigCache = null;
+    function refreshAutoConfig() {
+      fetch('/api/automation/status')
+        .then(r => r.json())
+        .then(data => { autoConfigCache = data; })
+        .catch(() => {});
+    }
+    refreshAutoConfig();
+
+    // Atualização automática via rota externa da API (via Proxy ESP32) a cada 1 segundo (SOMENTE no modo automático)
     let isFetchingState = false;
     function pollScoreboardAjax() {
-      // Se não estiver no modo automático, não realiza AJAX
       if (currentPanelMode !== 'automatico') return;
       if (isFetchingState) return;
       isFetchingState = true;
-      fetch('/api/scoreboard/state')
+
+      // Rota externa configurada do campeonato (padrão 76)
+      const campId = (autoConfigCache && autoConfigCache.campeonato && autoConfigCache.campeonato !== '10') ? autoConfigCache.campeonato : '76';
+      const targetApiUrl = `https://esportes7.com.br/api/championships/${encodeURIComponent(campId)}/matches`;
+      const proxyUrl = `/api/proxy?url=${encodeURIComponent(targetApiUrl)}`;
+
+      fetch(proxyUrl)
         .then(response => {
           if (!response.ok) throw new Error('HTTP ' + response.status);
           return response.json();
         })
-        .then(data => {
-          if (currentPanelMode === 'automatico') {
-            applyScoreboardState(data);
+        .then(matchesList => {
+          if (currentPanelMode === 'automatico' && Array.isArray(matchesList) && matchesList.length > 0) {
+            let match = null;
+            if (autoConfigCache && autoConfigCache.partida) {
+              match = matchesList.find(m => String(m.id) === String(autoConfigCache.partida));
+            }
+            if (!match) {
+              match = matchesList.find(m => m.status === 'live' || m.status === 'in_progress') || matchesList[0];
+            }
+
+            if (match) {
+              const stateData = {
+                scoreA: match.home_score !== undefined ? match.home_score : 0,
+                scoreB: match.away_score !== undefined ? match.away_score : 0,
+                teamNameA: match.home_team ? match.home_team.name : 'TIME A',
+                teamNameB: match.away_team ? match.away_team.name : 'TIME B',
+                period: match.round_number || 1
+              };
+
+              if (match.events && Array.isArray(match.events)) {
+                const timerEvents = match.events.filter(e => e.event_type === 'timer_control');
+                if (timerEvents.length > 0) {
+                  const lastTimer = timerEvents[timerEvents.length - 1];
+                  if (lastTimer.game_time) stateData.timer = lastTimer.game_time;
+                }
+              }
+
+              applyScoreboardState(stateData);
+
+              // Atualiza sincronização com os LEDs físicos do ESP32
+              sendScoreboardAction({
+                action: 'sync_external',
+                scoreA: stateData.scoreA,
+                scoreB: stateData.scoreB
+              });
+            }
           }
         })
         .catch(err => {
-          // Erro de rede transitório ou ambiente de demonstração
+          // Fallback para estado interno local se a requisição externa falhar
+          fetch('/api/scoreboard/state')
+            .then(r => r.json())
+            .then(data => {
+              if (currentPanelMode === 'automatico') applyScoreboardState(data);
+            })
+            .catch(() => {});
         })
         .finally(() => {
           isFetchingState = false;
@@ -580,8 +669,17 @@
     }
 
     function connectWs() {
+      if (window.location.protocol === 'https:') {
+        console.log('Painel conectado via HTTPS: sincronização automática do placar operando via AJAX seguro a cada 1s.');
+        return;
+      }
       const host = window.location.hostname || '192.168.4.1';
-      ws = new WebSocket(`ws://${host}:81/`);
+      try {
+        ws = new WebSocket(`ws://${host}:81/`);
+      } catch (e) {
+        console.warn('WebSocket não pôde ser iniciado em contexto seguro:', e);
+        return;
+      }
 
       ws.onopen = () => {
         console.log('WebSocket conectado!');
@@ -599,8 +697,7 @@
       };
 
       ws.onclose = () => {
-        console.warn('WebSocket desconectado. Tentando reconectar...');
-        setTimeout(connectWs, 2000);
+        setTimeout(connectWs, 5000);
       };
     }
 
@@ -635,22 +732,29 @@
       sendScoreboardAction({ action: 'set', target: id, value: val });
     }
 
-    function setPanelMode(mode) {
+    function setPanelMode(mode, saveToServer = true) {
       currentPanelMode = mode;
       const isAuto = (mode === 'automatico');
-      fetch('/api/automation/mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: mode })
-      }).catch(e => console.warn('Falha ao salvar modo', e));
+      if (saveToServer) {
+        fetch('/api/automation/mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: mode })
+        }).catch(e => console.warn('Falha ao salvar modo', e));
+      }
 
-      document.querySelectorAll('.btn-controls').forEach(el => {
-        el.style.display = isAuto ? 'none' : 'flex';
+      // Manter botões no layout (sem display: none) para evitar tremor/salto estrutural na tela
+      document.querySelectorAll('.btn-step').forEach(btn => {
+        btn.disabled = isAuto;
+        btn.style.opacity = isAuto ? '0.35' : '1';
+        btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
+        btn.style.pointerEvents = isAuto ? 'none' : 'auto';
       });
       document.querySelectorAll('.timer-actions button').forEach(btn => {
         btn.disabled = isAuto;
-        btn.style.opacity = isAuto ? '0.5' : '1';
+        btn.style.opacity = isAuto ? '0.4' : '1';
         btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
+        btn.style.pointerEvents = isAuto ? 'none' : 'auto';
       });
       document.querySelectorAll('input.led-text').forEach(input => {
         if (isAuto) input.setAttribute('readonly', 'true');
@@ -866,16 +970,16 @@
     pollScoreboardAjax();
     setInterval(pollScoreboardAjax, 1000);
 
-    // Obter modo salvo no ESP32
+    // Obter modo salvo no ESP32 sem reenviar POST redundante
     fetch('/api/automation/status')
       .then(r => r.json())
       .then(data => {
         const mode = data.mode || 'automatico';
         const radio = document.querySelector(`input[name="panelMode"][value="${mode}"]`);
         if (radio) radio.checked = true;
-        setPanelMode(mode);
+        setPanelMode(mode, false);
       })
-      .catch(() => setPanelMode('automatico'));
+      .catch(() => setPanelMode('automatico', false));
 
     const role = sessionStorage.getItem('role') || 'Operador';
     if (role === 'Operador') {

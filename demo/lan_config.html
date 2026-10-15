@@ -350,17 +350,13 @@
     .btn-test { background: linear-gradient(180deg, #1565c0, #0d47a1); }
     .btn-forget { background: linear-gradient(180deg, #c62828, #b71c1c); }
 
-    /* Static IP Fields Toggle */
+    /* Network Config Fields (exibido tanto em DHCP quanto em IP Fixo) */
     #staticIpFields {
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 15px;
       border-top: 1px dashed #333;
       padding-top: 15px;
-    }
-
-    #staticIpFields.active {
-      display: flex;
     }
   </style>
 </head>
@@ -451,26 +447,35 @@
         </label>
       </div>
 
-      <!-- Static IP fields -->
+      <!-- Configurações de Rede (IP, Máscara, Gateway, DNS) -->
       <div id="staticIpFields">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #ddd;">
+            🌐 Configurações de Rede (TCP/IP)
+          </span>
+          <span id="dhcpStatusBadge" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 12px; background: #1b5e20; color: #81c784; font-weight: 700;">
+            Atribuído via DHCP (Automático)
+          </span>
+        </div>
+
         <div class="grid-2col">
           <div class="input-group">
-            <label>Endereço IP Fixado</label>
-            <input type="text" id="staticIp" class="input-field" value="192.168.1.200">
+            <label id="lblIp">Endereço IP (DHCP)</label>
+            <input type="text" id="staticIp" class="input-field" value="---" readonly>
           </div>
           <div class="input-group">
-            <label>Mascara de Subrede</label>
-            <input type="text" id="staticSubnet" class="input-field" value="255.255.255.0">
+            <label id="lblSubnet">Máscara de Sub-rede</label>
+            <input type="text" id="staticSubnet" class="input-field" value="---" readonly>
           </div>
         </div>
         <div class="grid-2col">
           <div class="input-group">
-            <label>Gateway Padrão</label>
-            <input type="text" id="staticGateway" class="input-field" value="192.168.1.1">
+            <label id="lblGateway">Gateway Padrão</label>
+            <input type="text" id="staticGateway" class="input-field" value="---" readonly>
           </div>
           <div class="input-group">
-            <label>Servidor DNS</label>
-            <input type="text" id="staticDns" class="input-field" value="8.8.8.8">
+            <label id="lblDns">Servidor DNS</label>
+            <input type="text" id="staticDns" class="input-field" value="---" readonly>
           </div>
         </div>
       </div>
@@ -597,13 +602,74 @@
       }
     }
 
+    let currentNetworkStatus = null;
+
     function toggleDhcp() {
       const isDhcp = document.getElementById('dhcpToggle').checked;
-      const staticFields = document.getElementById('staticIpFields');
+      const ipInput = document.getElementById('staticIp');
+      const subnetInput = document.getElementById('staticSubnet');
+      const gatewayInput = document.getElementById('staticGateway');
+      const dnsInput = document.getElementById('staticDns');
+      const badge = document.getElementById('dhcpStatusBadge');
+      const lblIp = document.getElementById('lblIp');
+
       if (isDhcp) {
-        staticFields.classList.remove('active');
+        // Modo DHCP: Mostrar configurações obtidas automaticamente pelo roteador
+        if (badge) {
+          badge.innerText = 'Atribuído via DHCP (Automático)';
+          badge.style.background = '#1b5e20';
+          badge.style.color = '#81c784';
+        }
+        if (lblIp) lblIp.innerText = 'Endereço IP (DHCP)';
+
+        if (currentNetworkStatus) {
+          ipInput.value = currentNetworkStatus.currentIp || currentNetworkStatus.ip || '---';
+          subnetInput.value = currentNetworkStatus.currentSubnet || currentNetworkStatus.subnet || '255.255.255.0';
+          gatewayInput.value = currentNetworkStatus.currentGateway || currentNetworkStatus.gateway || '0.0.0.0';
+          dnsInput.value = currentNetworkStatus.currentDns || currentNetworkStatus.dns || '0.0.0.0';
+        }
+
+        ipInput.readOnly = true;
+        subnetInput.readOnly = true;
+        gatewayInput.readOnly = true;
+        dnsInput.readOnly = true;
+
+        [ipInput, subnetInput, gatewayInput, dnsInput].forEach(el => {
+          if (el) {
+            el.style.backgroundColor = '#141414';
+            el.style.borderColor = '#2a2a2a';
+            el.style.color = '#81c784';
+          }
+        });
       } else {
-        staticFields.classList.add('active');
+        // Modo Estático (Manual): Permitir edição de IP Fixo
+        if (badge) {
+          badge.innerText = 'IP Fixo (Manual)';
+          badge.style.background = '#e65100';
+          badge.style.color = '#ffcc80';
+        }
+        if (lblIp) lblIp.innerText = 'Endereço IP Fixado (Manual)';
+
+        if (currentNetworkStatus && currentNetworkStatus.staticIp) {
+          ipInput.value = currentNetworkStatus.staticIp;
+          subnetInput.value = currentNetworkStatus.staticSubnet || '255.255.255.0';
+          gatewayInput.value = currentNetworkStatus.staticGateway || '192.168.1.1';
+          dnsInput.value = currentNetworkStatus.staticDns || '8.8.8.8';
+        }
+
+        ipInput.readOnly = false;
+        subnetInput.readOnly = false;
+        gatewayInput.readOnly = false;
+        dnsInput.readOnly = false;
+
+        [ipInput, subnetInput, gatewayInput, dnsInput].forEach(el => {
+          if (el) {
+            el.style.backgroundColor = '#1a1a1a';
+            el.style.borderColor = '#333';
+            el.style.color = '#ffffff';
+          }
+        });
+        if (ipInput) ipInput.style.borderColor = '#ff1a1a';
       }
     }
 
@@ -614,6 +680,7 @@
         return r.json();
       })
       .then(data => {
+        currentNetworkStatus = data;
         document.getElementById('disp-ip').innerText = data.ip || '---';
         document.getElementById('disp-ssid').innerText = data.ssid || '---';
         document.getElementById('disp-rssi').innerText = (data.rssi || 0) + ' dBm';
@@ -626,10 +693,6 @@
         }
         document.getElementById('wifiPass').value = data.wifiPass || '';
         document.getElementById('dhcpToggle').checked = data.dhcp;
-        document.getElementById('staticIp').value = data.staticIp || '';
-        document.getElementById('staticSubnet').value = data.staticSubnet || '';
-        document.getElementById('staticGateway').value = data.staticGateway || '';
-        document.getElementById('staticDns').value = data.staticDns || '';
 
         document.getElementById('apSsid').value = data.apSsid || '';
         document.getElementById('apPass').value = data.apPass || '';

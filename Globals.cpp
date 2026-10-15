@@ -5,7 +5,8 @@ AutomationConfig automationConfig;
 Preferences preferences;
 DNSServer dnsServer;
 
-WebServer* server = nullptr;
+ESPWebServer* server = nullptr;
+ESPWebServerSecure* httpsServer = nullptr;
 WebSocketsServer* webSocket = nullptr;
 
 int scoreA = 0;

@@ -80,10 +80,10 @@ void setup() {
     automationConfig.porta = doc["porta"] | (doc["port"] | 0);
     automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
     automationConfig.modalidade = doc["modalidade"] | "";
-    automationConfig.campeonato = doc["campeonato"] | "";
-    automationConfig.partida = doc["partida"] | "";
+    automationConfig.campeonato = doc["campeonato"] | (doc["campeonatoId"] | (doc["championship_id"] | ""));
+    automationConfig.partida = doc["partida"] | (doc["partidaId"] | (doc["match_id"] | ""));
     automationConfig.etapa = doc["etapa"] | "";
-    automationConfig.rodada = doc["rodada"] | "";
+    automationConfig.rodada = doc["rodada"] | (doc["rodadaId"] | (doc["round_id"] | ""));
   }
   
   // Initialize WS2812B NeoPixel strips for the 18 digits and display 0 on all of them
@@ -134,29 +134,37 @@ void setup() {
     Serial.println("Wi-Fi operando em modo AP (com STA habilitado para escaneamento).");
   }
   
-  // Event listener to bind mDNS as soon as the router assigns an IP
+  // Event listener to log router IP assignment
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
     if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
-      Serial.printf("[mDNS] IP atribuído pelo roteador: %s\n", WiFi.localIP().toString().c_str());
-      MDNS.end();
-      delay(50);
-      if (MDNS.begin("placar")) {
-        MDNS.addService("http", "tcp", wifiConfig.httpPort);
-        MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-        Serial.printf("[mDNS] Responder ativo na rede local: http://placar.local:%d\n", wifiConfig.httpPort);
-      }
+      Serial.printf("[mDNS/STA] IP atribuído pelo roteador: %s\n", WiFi.localIP().toString().c_str());
     }
   });
 
   // Initialize initial mDNS Responder
-  if (MDNS.begin("placar")) {
-    MDNS.addService("http", "tcp", wifiConfig.httpPort);
+  if (MDNS.begin("painel")) {
+    MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-    Serial.println("mDNS inicial ativo: http://placar.local");
+    Serial.println("mDNS inicial ativo: http://painel.local");
   }
   
-  // Start Web Server on custom HTTP port
-  server = new WebServer(wifiConfig.httpPort);
+  // Iniciar servidor HTTP na porta 80 (servidor web principal - rápido, direto e sem avisos de certificado)
+  server = new ESPWebServer(wifiConfig.httpPort);
+
+  // Iniciar servidor HTTPS na porta 443 apenas para redirecionar para HTTP e limpar cache HSTS de navegadores
+  httpsServer = new ESPWebServerSecure(443);
+  httpsServer->setServerKeyAndCert(server_key_der, server_key_der_len, server_cert_der, server_cert_der_len);
+  httpsServer->onNotFound([]() {
+    String host = httpsServer->hostHeader();
+    int colon = host.indexOf(':');
+    if (colon >= 0) host = host.substring(0, colon);
+    if (host.length() == 0) host = "painel.local";
+    String target = "http://" + host + httpsServer->uri();
+    httpsServer->sendHeader("Location", target, true);
+    httpsServer->sendHeader("Strict-Transport-Security", "max-age=0", true);
+    httpsServer->send(302, "text/plain", "");
+  });
+  httpsServer->begin();
   
   const char * headerKeys[] = {"Cookie"};
   server->collectHeaders(headerKeys, 1);
@@ -231,20 +239,19 @@ void setup() {
     
     String host = server->hostHeader();
     
-    // Se a requisição não vier de placar.local (ex: probe de sistema operacional ou IP direto), redireciona para http://placar.local/
-    if (host.indexOf("placar.local") == -1) {
+    // Se a requisição for de domínio externo (captive portal do celular/SO), redireciona para painel.local
+    if (host.indexOf("painel.local") == -1 && host.indexOf("placar.local") == -1 && host.indexOf("192.168.4.1") == -1) {
       handleCaptivePortalRedirect();
       return;
     }
     
-    // Se já estiver em placar.local mas a rota não existir, redireciona para a raiz
-    String target = (wifiConfig.httpPort == 80) ? "http://placar.local/" : ("http://placar.local:" + String(wifiConfig.httpPort) + "/");
-    server->sendHeader("Location", target, true);
+    // Se a rota não existir, redireciona para a raiz mantendo o host/protocolo atual
+    server->sendHeader("Location", "/", true);
     server->send(302, "text/plain", "");
   });
 
   server->begin();
-  Serial.printf("Servidor HTTP iniciado na porta %d\n", wifiConfig.httpPort);
+  Serial.printf("Servidor HTTP iniciado na porta %d (http://painel.local/)\n", wifiConfig.httpPort);
   
   // Start WebSocket server on custom port
   webSocket = new WebSocketsServer(wifiConfig.wsPort);
@@ -257,6 +264,7 @@ void loop() {
   // Feed web servers and captive portal DNS
   dnsServer.processNextRequest();
   if (server != nullptr) server->handleClient();
+  if (httpsServer != nullptr) httpsServer->handleClient();
   if (webSocket != nullptr) webSocket->loop();
   
   unsigned long now = millis();
@@ -281,32 +289,17 @@ void loop() {
   }
   
   // Manter o ponto de acesso AP 'esporte7system' sempre ativo em conjunto com a rede local (WIFI_AP_STA),
-  // garantindo que qualquer usuário conectando ao Wi-Fi abra diretamente http://placar.local/
+  // Manter o ponto de acesso AP 'esporte7system' sempre ativo em conjunto com a rede local (WIFI_AP_STA)
   static bool lastConnected = false;
   bool isConnected = (WiFi.status() == WL_CONNECTED);
   if (isConnected != lastConnected) {
     lastConnected = isConnected;
     if (isConnected) {
       Serial.printf("[Wi-Fi] Conectado à rede local com sucesso! IP local: %s\n", WiFi.localIP().toString().c_str());
-
-      // Re-vincular mDNS ao IP da rede local
-      MDNS.end();
-      delay(50);
-      if (MDNS.begin("placar")) {
-        MDNS.addService("http", "tcp", wifiConfig.httpPort);
-        MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-        Serial.printf("[mDNS] Ativo na rede local: http://placar.local:%d\n", wifiConfig.httpPort);
-      }
+      Serial.printf("[MEM] Free Heap: %d bytes\n", ESP.getFreeHeap());
     } else {
       Serial.println("[Wi-Fi] Desconectado da rede local! Ponto de acesso 'esporte7system' segue ativo.");
       dnsServer.start(53, "*", IPAddress(192, 168, 4, 1));
-
-      MDNS.end();
-      delay(50);
-      if (MDNS.begin("placar")) {
-        MDNS.addService("http", "tcp", wifiConfig.httpPort);
-        MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-      }
     }
   }
   

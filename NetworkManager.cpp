@@ -24,7 +24,7 @@ void sendSingleState(uint8_t num) {
 
 void broadcastState() {
   if (webSocket == nullptr) return;
-  DynamicJsonDocument doc(256);
+  DynamicJsonDocument doc(512);
   doc["type"] = "state";
   doc["scoreA"] = scoreA;
   doc["scoreB"] = scoreB;
@@ -39,6 +39,21 @@ void broadcastState() {
   sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
   doc["timer"] = timerStr;
   doc["timerRunning"] = timerRunning;
+  doc["totalSeconds"] = totalSeconds;
+  
+  // IDs de Partida, Campeonato e Rodada
+  doc["partidaId"]        = automationConfig.partida;
+  doc["campeonatoId"]     = automationConfig.campeonato;
+  doc["rodadaId"]         = automationConfig.rodada;
+  doc["partida"]          = automationConfig.partida;
+  doc["campeonato"]       = automationConfig.campeonato;
+  doc["rodada"]           = automationConfig.rodada;
+  doc["match_id"]         = automationConfig.partida;
+  doc["championship_id"]  = automationConfig.campeonato;
+  doc["round_id"]         = automationConfig.rodada;
+  doc["modalidade"]       = automationConfig.modalidade;
+  doc["automationActive"]  = automationConfig.active;
+  doc["automationMode"]    = automationConfig.mode;
   
   String response;
   serializeJson(doc, response);
@@ -75,11 +90,7 @@ bool checkAuthRole(String requiredRole) {
 }
 
 void handleCaptivePortalRedirect() {
-  String target = "http://placar.local";
-  if (wifiConfig.httpPort != 80) {
-    target += ":" + String(wifiConfig.httpPort);
-  }
-  target += "/";
+  String target = "http://painel.local/";
 
   server->sendHeader("Location", target, true);
   server->sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -89,39 +100,34 @@ void handleCaptivePortalRedirect() {
 }
 
 void handleRoot() { 
-  String host = server->hostHeader();
-  if (host.indexOf("192.168.4.1") >= 0) {
-    String target = (wifiConfig.httpPort == 80) ? "http://placar.local/" : ("http://placar.local:" + String(wifiConfig.httpPort) + "/");
-    server->sendHeader("Location", target, true);
-    server->send(302, "text/plain", "");
-    return;
-  }
-
   if (checkAuth()) {
-    server->sendHeader("Location", "/painel.html");
+    server->sendHeader("Location", "/painel.html", true);
     server->send(302, "text/plain", "");
     return;
   }
   server->send_P(200, "text/html", login_html); 
 }
 void handleUserAdm() { 
-  if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
+  if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html", true); server->send(302, "text/plain", ""); return; }
   server->send_P(200, "text/html", user_adm_html); 
 }
 void handleLanConfig() { 
-  if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
+  if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html", true); server->send(302, "text/plain", ""); return; }
   server->send_P(200, "text/html", lan_config_html); 
 }
 void handleSsidConfig() { 
-  if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
+  if (!checkAuthRole("Administrador")) { server->sendHeader("Location", "/login.html", true); server->send(302, "text/plain", ""); return; }
   server->send_P(200, "text/html", ssid_config_html); 
 }
 void handlePanelConfig() { 
-  if (!checkAuthRole("Gerente")) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
+  if (!checkAuthRole("Gerente")) { server->sendHeader("Location", "/login.html", true); server->send(302, "text/plain", ""); return; }
+  server->sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  server->sendHeader("Pragma", "no-cache");
+  server->sendHeader("Expires", "0");
   server->send_P(200, "text/html", panel_config_html); 
 }
 void handlePainel() { 
-  if (!checkAuth()) { server->sendHeader("Location", "/login.html"); server->send(302, "text/plain", ""); return; }
+  if (!checkAuth()) { server->sendHeader("Location", "/login.html", true); server->send(302, "text/plain", ""); return; }
   server->send_P(200, "text/html", painel_html); 
 }
 
@@ -283,16 +289,26 @@ void handleWifiStatus() {
   if (!checkAuthRole("Administrador")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
   DynamicJsonDocument doc(1024);
   
-  doc["ip"] = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-  doc["ssid"] = WiFi.status() == WL_CONNECTED ? WiFi.SSID() : wifiConfig.apSsid;
-  doc["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  bool isConnected = (WiFi.status() == WL_CONNECTED);
+  doc["connected"] = isConnected;
+  doc["ip"] = isConnected ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+  doc["currentIp"] = isConnected ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+  doc["currentSubnet"] = isConnected ? WiFi.subnetMask().toString() : "255.255.255.0";
+  doc["currentGateway"] = isConnected ? WiFi.gatewayIP().toString() : "0.0.0.0";
+  doc["currentDns"] = isConnected ? WiFi.dnsIP().toString() : "0.0.0.0";
+  doc["subnet"] = doc["currentSubnet"];
+  doc["gateway"] = doc["currentGateway"];
+  doc["dns"] = doc["currentDns"];
+  
+  doc["ssid"] = isConnected ? WiFi.SSID() : wifiConfig.apSsid;
+  doc["rssi"] = isConnected ? WiFi.RSSI() : 0;
   
   uint8_t mac[6];
   WiFi.macAddress(mac);
   char macStr[18];
   sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   doc["mac"] = macStr;
-  doc["mode"] = WiFi.status() == WL_CONNECTED ? "sta" : "ap";
+  doc["mode"] = isConnected ? "sta" : "ap";
   
   doc["wifiSsid"] = wifiConfig.wifiSsid;
   doc["wifiPass"] = wifiConfig.wifiPass;
@@ -438,13 +454,7 @@ void handleWifiForget() {
   WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(wifiConfig.apSsid.c_str(), wifiConfig.apPass.c_str(), wifiConfig.apChannel);
   
-  // Reiniciar mDNS no AP
-  MDNS.end();
-  delay(50);
-  if (MDNS.begin("placar")) {
-    MDNS.addService("http", "tcp", wifiConfig.httpPort);
-    MDNS.addService("ws", "tcp", wifiConfig.wsPort);
-  }
+  // SoftAP configurado para contingencia imediata
   
   server->send(200, "application/json", "{\"status\":\"success\",\"message\":\"Rede esquecida com sucesso!\"}");
   
@@ -475,16 +485,16 @@ void handleAutomationConfig() {
   preferences.putString("automation", configStr);
   
   // Reload local automation configs
-  automationConfig.active = doc["active"] | false;
+  automationConfig.active = doc["active"] | true;
   automationConfig.mode = doc["mode"] | "automatico";
   automationConfig.dominio = cleanDomain(doc["dominio"] | "esportes7.com.br");
   automationConfig.porta = doc["porta"] | (doc["port"] | 0);
   automationConfig.prefixo = doc["prefixo"] | (doc["prefix"] | "/api/");
   automationConfig.modalidade = doc["modalidade"] | "";
-  automationConfig.campeonato = doc["campeonato"] | "";
-  automationConfig.partida = doc["partida"] | "";
+  automationConfig.campeonato = doc["campeonato"] | (doc["campeonatoId"] | (doc["championship_id"] | ""));
+  automationConfig.partida = doc["partida"] | (doc["partidaId"] | (doc["match_id"] | ""));
   automationConfig.etapa = doc["etapa"] | "";
-  automationConfig.rodada = doc["rodada"] | "";
+  automationConfig.rodada = doc["rodada"] | (doc["rodadaId"] | (doc["round_id"] | ""));
   
   server->send(200, "application/json", "{\"status\":\"success\"}");
 }
@@ -517,16 +527,22 @@ void handleAutomationStatus() {
   if (!checkAuthRole("Operador")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
 
   DynamicJsonDocument doc(512);
-  doc["active"]     = automationConfig.active;
-  doc["mode"]       = automationConfig.mode;
-  doc["dominio"]    = automationConfig.dominio;
-  doc["porta"]      = automationConfig.porta;
-  doc["prefixo"]    = automationConfig.prefixo;
-  doc["modalidade"] = automationConfig.modalidade;
-  doc["campeonato"] = automationConfig.campeonato;
-  doc["partida"]    = automationConfig.partida;
-  doc["etapa"]      = automationConfig.etapa;
-  doc["rodada"]     = automationConfig.rodada;
+  doc["active"]         = automationConfig.active;
+  doc["mode"]           = automationConfig.mode;
+  doc["dominio"]        = automationConfig.dominio;
+  doc["porta"]          = automationConfig.porta;
+  doc["prefixo"]        = automationConfig.prefixo;
+  doc["modalidade"]     = automationConfig.modalidade;
+  doc["campeonato"]     = automationConfig.campeonato;
+  doc["partida"]        = automationConfig.partida;
+  doc["etapa"]          = automationConfig.etapa;
+  doc["rodada"]         = automationConfig.rodada;
+  doc["campeonatoId"]   = automationConfig.campeonato;
+  doc["partidaId"]      = automationConfig.partida;
+  doc["rodadaId"]       = automationConfig.rodada;
+  doc["match_id"]       = automationConfig.partida;
+  doc["championship_id"]= automationConfig.campeonato;
+  doc["round_id"]       = automationConfig.rodada;
 
   String out;
   serializeJson(doc, out);
@@ -612,7 +628,7 @@ String buildApiUrl(String baseInput, String targetPath) {
 
 // Proxy Endpoint to Query External Domain from ESP32 to prevent CORS issues
 void handleProxy() {
-  if (!checkAuthRole("Gerente")) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
+  if (!checkAuth()) { server->send(401, "application/json", "{\"error\":\"unauthorized\"}"); return; }
   String domain = cleanDomain(server->arg("domain"));
   String port = server->arg("port");
   if (port == "" && server->hasArg("porta")) port = server->arg("porta");
@@ -683,37 +699,57 @@ void handleProxy() {
   Serial.print("Proxy request: ");
   Serial.println(url);
   
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[Proxy] AVISO: ESP32 não está conectado à rede Wi-Fi com internet (STA)!");
+    server->sendHeader("Access-Control-Allow-Origin", "*");
+    server->send(503, "application/json", "{\"error\":\"esp32_offline\",\"message\":\"ESP32 nao esta conectado ao Wi-Fi com internet. Conecte o placar a sua rede Wi-Fi.\"}");
+    return;
+  }
+
   HTTPClient http;
-  http.setTimeout(5000);
+  http.setTimeout(15000);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   int httpCode = -1;
   
   if (url.startsWith("https://")) {
     WiFiClientSecure client;
     client.setInsecure(); // Disable HTTPS certificate check for flexibility
-    client.setTimeout(5000);
+    client.setTimeout(15000);
     http.begin(client, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     httpCode = http.GET();
     
+    Serial.printf("[Proxy] HTTPS status: %d\n", httpCode);
     if (httpCode == HTTP_CODE_OK) {
+      server->sendHeader("Access-Control-Allow-Origin", "*");
       server->send(200, "application/json", http.getString());
       http.end();
       return;
+    }
+    if (httpCode < 0) {
+      Serial.printf("[Proxy] HTTPS erro: %s\n", http.errorToString(httpCode).c_str());
     }
     http.end();
     
     // Fallback: tentar em HTTP puro se HTTPS falhar
     String plainUrl = "http://" + url.substring(8);
-    Serial.print("Proxy HTTP fallback: ");
+    Serial.print("[Proxy] HTTP fallback: ");
     Serial.println(plainUrl);
     WiFiClient plainClient;
-    plainClient.setTimeout(5000);
+    plainClient.setTimeout(15000);
     http.begin(plainClient, plainUrl);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     httpCode = http.GET();
+    Serial.printf("[Proxy] HTTP fallback status: %d\n", httpCode);
     if (httpCode == HTTP_CODE_OK) {
+      server->sendHeader("Access-Control-Allow-Origin", "*");
       server->send(200, "application/json", http.getString());
       http.end();
       return;
@@ -721,12 +757,17 @@ void handleProxy() {
     http.end();
   } else {
     WiFiClient plainClient;
-    plainClient.setTimeout(5000);
+    plainClient.setTimeout(15000);
     http.begin(plainClient, url);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     httpCode = http.GET();
+    Serial.printf("[Proxy] HTTP status: %d\n", httpCode);
     if (httpCode == HTTP_CODE_OK) {
+      server->sendHeader("Access-Control-Allow-Origin", "*");
       server->send(200, "application/json", http.getString());
       http.end();
       return;
@@ -734,7 +775,8 @@ void handleProxy() {
     http.end();
   }
   
-  server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy query failed\"}");
+  server->sendHeader("Access-Control-Allow-Origin", "*");
+  server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy query failed\",\"code\":" + String(httpCode) + "}");
 }
 
 // Proxy Endpoint for POST Requests
@@ -765,20 +807,31 @@ void handleProxyPost() {
   Serial.print("Proxy POST: ");
   Serial.println(url);
   
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[Proxy POST] AVISO: ESP32 não está conectado à rede Wi-Fi com internet (STA)!");
+    server->sendHeader("Access-Control-Allow-Origin", "*");
+    server->send(503, "application/json", "{\"error\":\"esp32_offline\",\"message\":\"ESP32 nao esta conectado ao Wi-Fi com internet\"}");
+    return;
+  }
+
   HTTPClient http;
-  http.setTimeout(5000);
+  http.setTimeout(15000);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   int httpCode = -1;
   
   if (url.startsWith("https://")) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(5000);
+    client.setTimeout(15000);
     http.begin(client, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     http.addHeader("Content-Type", "application/json");
     httpCode = http.POST(payload);
     if (httpCode >= 200 && httpCode < 300) {
+      server->sendHeader("Access-Control-Allow-Origin", "*");
       server->send(httpCode, "application/json", http.getString());
       http.end();
       return;
@@ -790,13 +843,17 @@ void handleProxyPost() {
     Serial.print("Proxy HTTP POST fallback: ");
     Serial.println(plainUrl);
     WiFiClient plainClient;
-    plainClient.setTimeout(5000);
+    plainClient.setTimeout(15000);
     http.begin(plainClient, plainUrl);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     http.addHeader("Content-Type", "application/json");
     httpCode = http.POST(payload);
     if (httpCode >= 200 && httpCode < 300) {
+      server->sendHeader("Access-Control-Allow-Origin", "*");
       server->send(httpCode, "application/json", http.getString());
       http.end();
       return;
@@ -804,13 +861,17 @@ void handleProxyPost() {
     http.end();
   } else {
     WiFiClient plainClient;
-    plainClient.setTimeout(5000);
+    plainClient.setTimeout(15000);
     http.begin(plainClient, url);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     http.addHeader("Content-Type", "application/json");
     httpCode = http.POST(payload);
     if (httpCode >= 200 && httpCode < 300) {
+      server->sendHeader("Access-Control-Allow-Origin", "*");
       server->send(httpCode, "application/json", http.getString());
       http.end();
       return;
@@ -818,7 +879,8 @@ void handleProxyPost() {
     http.end();
   }
   
-  server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy POST query failed\"}");
+  server->sendHeader("Access-Control-Allow-Origin", "*");
+  server->send(httpCode > 0 ? httpCode : 500, "application/json", "{\"error\":\"proxy POST query failed\",\"code\":" + String(httpCode) + "}");
 }
 
 // ==========================================
@@ -826,7 +888,7 @@ void handleProxyPost() {
 // ==========================================
 
 void handleScoreboardState() {
-  DynamicJsonDocument doc(256);
+  DynamicJsonDocument doc(512);
   doc["type"] = "state";
   doc["scoreA"] = scoreA;
   doc["scoreB"] = scoreB;
@@ -843,8 +905,24 @@ void handleScoreboardState() {
   doc["timerRunning"] = timerRunning;
   doc["totalSeconds"] = totalSeconds;
   
+  // IDs de Partida, Campeonato e Rodada
+  doc["partidaId"]        = automationConfig.partida;
+  doc["campeonatoId"]     = automationConfig.campeonato;
+  doc["rodadaId"]         = automationConfig.rodada;
+  doc["partida"]          = automationConfig.partida;
+  doc["campeonato"]       = automationConfig.campeonato;
+  doc["rodada"]           = automationConfig.rodada;
+  doc["match_id"]         = automationConfig.partida;
+  doc["championship_id"]  = automationConfig.campeonato;
+  doc["round_id"]         = automationConfig.rodada;
+  doc["modalidade"]       = automationConfig.modalidade;
+  doc["automationActive"]  = automationConfig.active;
+  doc["automationMode"]    = automationConfig.mode;
+  
   String json;
   serializeJson(doc, json);
+  server->sendHeader("Access-Control-Allow-Origin", "*");
+  server->sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   server->send(200, "application/json", json);
 }
 
@@ -858,6 +936,15 @@ void handleScoreboardAction() {
   DeserializationError error = deserializeJson(doc, server->arg("plain"));
   if (error) {
     server->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+    return;
+  }
+  
+  const char* action = doc["action"];
+  if (action && strcmp(action, "sync_external") == 0) {
+    if (doc.containsKey("scoreA")) scoreA = doc["scoreA"].as<int>();
+    if (doc.containsKey("scoreB")) scoreB = doc["scoreB"].as<int>();
+    updatePhysicalDisplays();
+    server->send(200, "application/json", "{\"status\":\"success\"}");
     return;
   }
   
@@ -875,7 +962,6 @@ void handleScoreboardAction() {
     }
   }
   
-  const char* action = doc["action"];
   if (action) {
     if (strcmp(action, "change") == 0) {
       const char* target = doc["target"];
@@ -1050,123 +1136,93 @@ void pollScoreboardAPI() {
   if (colonIdx == -1 && automationConfig.porta > 0 && automationConfig.porta != 80 && automationConfig.porta != 443 && automationConfig.porta != 8080) {
     dom += ":" + String(automationConfig.porta);
   }
-  String url = buildApiUrl(dom, "/api/public/matches/" + urlEncode(automationConfig.partida));
   
-  Serial.print("Poller request: ");
+  String camp = automationConfig.campeonato;
+  if (camp == "" || camp == "10") camp = "76";
+  String url = "https://" + dom + "/api/championships/" + camp + "/matches";
+  
+  if (WiFi.status() != WL_CONNECTED) return;
+  
+  Serial.print("Poller request matches: ");
   Serial.println(url);
   
   int httpCode = -1;
   HTTPClient http;
-  http.setTimeout(5000);
+  http.setTimeout(10000);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
   if (url.startsWith("https://")) {
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(5000);
+    client.setTimeout(10000);
     http.begin(client, url);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     httpCode = http.GET();
   } else {
     WiFiClient plainClient;
-    plainClient.setTimeout(5000);
+    plainClient.setTimeout(10000);
     http.begin(plainClient, url);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     http.addHeader("User-Agent", "Mozilla/5.0 (ESP32 Scoreboard)");
     http.addHeader("Accept", "application/json, text/plain, */*");
+    http.addHeader("Accept-Encoding", "identity");
+    http.addHeader("Connection", "close");
     httpCode = http.GET();
   }
   
   auto processResponse = [&](String payload) {
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(16384);
     DeserializationError error = deserializeJson(doc, payload);
     if (!error) {
-      if (doc.containsKey("match")) {
-        scoreA = doc["match"]["home_score"] | 0;
-        scoreB = doc["match"]["away_score"] | 0;
-      }
-      
-      // Sincronização inteligente do cronômetro
-      if (doc.containsKey("details") && doc["details"].containsKey("sync_timer")) {
-        int serverTime = totalSeconds;
-        bool serverRunning = timerRunning;
-        bool hasTimer = false;
+      JsonObject targetMatch;
+      bool found = false;
 
-        if (doc["details"]["sync_timer"].is<JsonObject>()) {
-          JsonObject st = doc["details"]["sync_timer"].as<JsonObject>();
-          if (st.containsKey("time")) {
-            serverTime = st["time"].as<int>();
-            hasTimer = true;
-          }
-          if (st.containsKey("isRunning")) {
-            serverRunning = st["isRunning"].as<bool>();
-          } else if (st.containsKey("running")) {
-            serverRunning = st["running"].as<bool>();
-          }
-          if (st.containsKey("currentPeriod")) {
-            if (st["currentPeriod"].is<int>()) {
-              period = st["currentPeriod"].as<int>();
-            } else if (st["currentPeriod"].is<const char*>()) {
-              const char* pStr = st["currentPeriod"].as<const char*>();
-              int pNum = 0;
-              if (sscanf(pStr, "%d", &pNum) > 0) period = pNum;
-            }
-          }
-        } else if (doc["details"]["sync_timer"].is<int>()) {
-          serverTime = doc["details"]["sync_timer"].as<int>();
-          hasTimer = true;
-        } else if (doc["details"]["sync_timer"].is<const char*>()) {
-          const char* timerStr = doc["details"]["sync_timer"].as<const char*>();
-          int h = 0, m = 0, s = 0;
-          int parts = sscanf(timerStr, "%d:%d:%d", &h, &m, &s);
-          if (parts == 3) {
-            serverTime = h * 3600 + m * 60 + s;
-            hasTimer = true;
-          } else if (parts == 2) {
-            serverTime = h * 60 + m;
-            hasTimer = true;
-          } else if (parts == 1) {
-            serverTime = h;
-            hasTimer = true;
-          }
-        }
-
-        if (hasTimer) {
-          timerRunning = serverRunning;
-          
-          if (!serverRunning) {
-            // Se pausado ou parado, ajusta exatamente o tempo do servidor
-            totalSeconds = serverTime;
-          } else {
-            // Se rodando: só corrige o tempo local se o desvio for maior que 2 segundos.
-            // Nas verificações normais apenas confirma e deixa o ESP32 rodar segundo a segundo lisinho!
-            long diff = (long)totalSeconds - (long)serverTime;
-            if (diff < -2 || diff > 2) {
-              totalSeconds = serverTime;
+      if (doc.is<JsonArray>()) {
+        JsonArray matches = doc.as<JsonArray>();
+        String targetPartida = automationConfig.partida;
+        if (targetPartida != "") {
+          for (JsonObject m : matches) {
+            if (String(m["id"].as<int>()) == targetPartida || m["id"].as<String>() == targetPartida) {
+              targetMatch = m;
+              found = true;
+              break;
             }
           }
         }
-      }
-      
-      // Contagem de faltas a partir dos eventos (tiro_livre, tiro_7m, foul)
-      if (doc.containsKey("details") && doc["details"].containsKey("events") && doc["details"]["events"].is<JsonArray>()) {
-        int homeId = doc["match"]["home_team_id"] | 0;
-        int awayId = doc["match"]["away_team_id"] | 0;
-        int fA = 0;
-        int fB = 0;
-        for (JsonObject ev : doc["details"]["events"].as<JsonArray>()) {
-          const char* type = ev["type"] | "";
-          if (strcmp(type, "foul") == 0 || strcmp(type, "tiro_livre") == 0 || strcmp(type, "tiro_7m") == 0) {
-            int tId = ev["team_id"] | 0;
-            if (tId == homeId) fA++;
-            else if (tId == awayId) fB++;
+        if (!found) {
+          // Busca partida ao vivo ou primeira da lista
+          for (JsonObject m : matches) {
+            const char* st = m["status"] | "";
+            if (strcmp(st, "live") == 0 || strcmp(st, "in_progress") == 0) {
+              targetMatch = m;
+              found = true;
+              break;
+            }
+          }
+          if (!found && matches.size() > 0) {
+            targetMatch = matches[0];
+            found = true;
           }
         }
-        foulsA = fA;
-        foulsB = fB;
+      } else if (doc.is<JsonObject>()) {
+        if (doc.containsKey("match")) targetMatch = doc["match"];
+        else targetMatch = doc.as<JsonObject>();
+        found = true;
       }
-      
-      updatePhysicalDisplays();
-      broadcastState();
+
+      if (found) {
+        int newScoreA = targetMatch["home_score"] | 0;
+        int newScoreB = targetMatch["away_score"] | 0;
+        if (scoreA != newScoreA || scoreB != newScoreB) {
+          scoreA = newScoreA;
+          scoreB = newScoreB;
+          updatePhysicalDisplays();
+          broadcastState();
+        }
+      }
     }
   };
   
@@ -1178,7 +1234,7 @@ void pollScoreboardAPI() {
     http.end();
     String plainUrl = "http://" + url.substring(8);
     WiFiClient plainClient;
-    plainClient.setTimeout(2);
+    plainClient.setTimeout(10000);
     Serial.print("Poller request (HTTP fallback): ");
     Serial.println(plainUrl);
     

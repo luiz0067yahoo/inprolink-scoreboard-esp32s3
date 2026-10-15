@@ -1220,17 +1220,13 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
     .btn-test { background: linear-gradient(180deg, #1565c0, #0d47a1); }
     .btn-forget { background: linear-gradient(180deg, #c62828, #b71c1c); }
 
-    /* Static IP Fields Toggle */
+    /* Network Config Fields (exibido tanto em DHCP quanto em IP Fixo) */
     #staticIpFields {
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 15px;
       border-top: 1px dashed #333;
       padding-top: 15px;
-    }
-
-    #staticIpFields.active {
-      display: flex;
     }
   </style>
 </head>
@@ -1321,26 +1317,35 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
         </label>
       </div>
 
-      <!-- Static IP fields -->
+      <!-- Configurações de Rede (IP, Máscara, Gateway, DNS) -->
       <div id="staticIpFields">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #ddd;">
+            🌐 Configurações de Rede (TCP/IP)
+          </span>
+          <span id="dhcpStatusBadge" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 12px; background: #1b5e20; color: #81c784; font-weight: 700;">
+            Atribuído via DHCP (Automático)
+          </span>
+        </div>
+
         <div class="grid-2col">
           <div class="input-group">
-            <label>Endereço IP Fixado</label>
-            <input type="text" id="staticIp" class="input-field" value="192.168.1.200">
+            <label id="lblIp">Endereço IP (DHCP)</label>
+            <input type="text" id="staticIp" class="input-field" value="---" readonly>
           </div>
           <div class="input-group">
-            <label>Mascara de Subrede</label>
-            <input type="text" id="staticSubnet" class="input-field" value="255.255.255.0">
+            <label id="lblSubnet">Máscara de Sub-rede</label>
+            <input type="text" id="staticSubnet" class="input-field" value="---" readonly>
           </div>
         </div>
         <div class="grid-2col">
           <div class="input-group">
-            <label>Gateway Padrão</label>
-            <input type="text" id="staticGateway" class="input-field" value="192.168.1.1">
+            <label id="lblGateway">Gateway Padrão</label>
+            <input type="text" id="staticGateway" class="input-field" value="---" readonly>
           </div>
           <div class="input-group">
-            <label>Servidor DNS</label>
-            <input type="text" id="staticDns" class="input-field" value="8.8.8.8">
+            <label id="lblDns">Servidor DNS</label>
+            <input type="text" id="staticDns" class="input-field" value="---" readonly>
           </div>
         </div>
       </div>
@@ -1467,13 +1472,74 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
       }
     }
 
+    let currentNetworkStatus = null;
+
     function toggleDhcp() {
       const isDhcp = document.getElementById('dhcpToggle').checked;
-      const staticFields = document.getElementById('staticIpFields');
+      const ipInput = document.getElementById('staticIp');
+      const subnetInput = document.getElementById('staticSubnet');
+      const gatewayInput = document.getElementById('staticGateway');
+      const dnsInput = document.getElementById('staticDns');
+      const badge = document.getElementById('dhcpStatusBadge');
+      const lblIp = document.getElementById('lblIp');
+
       if (isDhcp) {
-        staticFields.classList.remove('active');
+        // Modo DHCP: Mostrar configurações obtidas automaticamente pelo roteador
+        if (badge) {
+          badge.innerText = 'Atribuído via DHCP (Automático)';
+          badge.style.background = '#1b5e20';
+          badge.style.color = '#81c784';
+        }
+        if (lblIp) lblIp.innerText = 'Endereço IP (DHCP)';
+
+        if (currentNetworkStatus) {
+          ipInput.value = currentNetworkStatus.currentIp || currentNetworkStatus.ip || '---';
+          subnetInput.value = currentNetworkStatus.currentSubnet || currentNetworkStatus.subnet || '255.255.255.0';
+          gatewayInput.value = currentNetworkStatus.currentGateway || currentNetworkStatus.gateway || '0.0.0.0';
+          dnsInput.value = currentNetworkStatus.currentDns || currentNetworkStatus.dns || '0.0.0.0';
+        }
+
+        ipInput.readOnly = true;
+        subnetInput.readOnly = true;
+        gatewayInput.readOnly = true;
+        dnsInput.readOnly = true;
+
+        [ipInput, subnetInput, gatewayInput, dnsInput].forEach(el => {
+          if (el) {
+            el.style.backgroundColor = '#141414';
+            el.style.borderColor = '#2a2a2a';
+            el.style.color = '#81c784';
+          }
+        });
       } else {
-        staticFields.classList.add('active');
+        // Modo Estático (Manual): Permitir edição de IP Fixo
+        if (badge) {
+          badge.innerText = 'IP Fixo (Manual)';
+          badge.style.background = '#e65100';
+          badge.style.color = '#ffcc80';
+        }
+        if (lblIp) lblIp.innerText = 'Endereço IP Fixado (Manual)';
+
+        if (currentNetworkStatus && currentNetworkStatus.staticIp) {
+          ipInput.value = currentNetworkStatus.staticIp;
+          subnetInput.value = currentNetworkStatus.staticSubnet || '255.255.255.0';
+          gatewayInput.value = currentNetworkStatus.staticGateway || '192.168.1.1';
+          dnsInput.value = currentNetworkStatus.staticDns || '8.8.8.8';
+        }
+
+        ipInput.readOnly = false;
+        subnetInput.readOnly = false;
+        gatewayInput.readOnly = false;
+        dnsInput.readOnly = false;
+
+        [ipInput, subnetInput, gatewayInput, dnsInput].forEach(el => {
+          if (el) {
+            el.style.backgroundColor = '#1a1a1a';
+            el.style.borderColor = '#333';
+            el.style.color = '#ffffff';
+          }
+        });
+        if (ipInput) ipInput.style.borderColor = '#ff1a1a';
       }
     }
 
@@ -1484,6 +1550,7 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
         return r.json();
       })
       .then(data => {
+        currentNetworkStatus = data;
         document.getElementById('disp-ip').innerText = data.ip || '---';
         document.getElementById('disp-ssid').innerText = data.ssid || '---';
         document.getElementById('disp-rssi').innerText = (data.rssi || 0) + ' dBm';
@@ -1496,10 +1563,6 @@ const char lan_config_html[] PROGMEM = R"rawliteral(
         }
         document.getElementById('wifiPass').value = data.wifiPass || '';
         document.getElementById('dhcpToggle').checked = data.dhcp;
-        document.getElementById('staticIp').value = data.staticIp || '';
-        document.getElementById('staticSubnet').value = data.staticSubnet || '';
-        document.getElementById('staticGateway').value = data.staticGateway || '';
-        document.getElementById('staticDns').value = data.staticDns || '';
 
         document.getElementById('apSsid').value = data.apSsid || '';
         document.getElementById('apPass').value = data.apPass || '';
@@ -1967,7 +2030,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     .input-field:focus { border-color: #ff1a1a; }
 
-    /* Cards Grid */
+    /* Cards Grid (Modalidade, Campeonato, Rodada) */
     .options-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -2009,6 +2072,213 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       font-size: 0.85rem;
       text-transform: uppercase;
       color: #ddd;
+      text-align: center;
+    }
+
+    /* MATCH CARD LAYOUT - FIEL AO PRINT DO USUÁRIO */
+    .matches-list-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .match-card-wrapper {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s ease;
+      color: #111827;
+    }
+
+    .match-card-wrapper:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      border-color: #ff4d4f;
+    }
+
+    .match-card-wrapper.selected {
+      border: 2px solid #ef4444;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.55);
+    }
+
+    .match-card-top-bar {
+      height: 4px;
+      background: #ff5252;
+      width: 100%;
+    }
+
+    .match-card-inner {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .match-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .match-date-time {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .m-dot {
+      color: #9ca3af;
+      margin: 0 2px;
+    }
+
+    .match-location {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #6b7280;
+      max-width: 45%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .match-confronto {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 15px;
+      padding: 4px 0;
+    }
+
+    .match-team {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .team-logo-badge {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: #f9fafb;
+      border: 2px solid #f3f4f6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .team-logo-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .team-name {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #111827;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .match-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      min-width: 110px;
+    }
+
+    .match-score {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      line-height: 1;
+    }
+
+    .score-num {
+      font-size: 1.85rem;
+      font-weight: 900;
+      color: #111827;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .score-x {
+      font-size: 1.15rem;
+      color: #9ca3af;
+      font-weight: 700;
+    }
+
+    .match-status-badge {
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 9px;
+      border-radius: 10px;
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .match-status-badge.finished {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .match-status-badge.scheduled {
+      background: #e0f2fe;
+      color: #0284c7;
+    }
+
+    .match-clock {
+      font-size: 0.85rem;
+      font-weight: 900;
+      color: #dc2626;
+      font-family: 'Orbitron', monospace;
+      letter-spacing: 1px;
+    }
+
+    .match-card-footer {
+      display: flex;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    .btn-match-select {
+      background: #fff1f0;
+      border: 1px solid #ffccc7;
+      color: #cf1322;
+      padding: 7px 24px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .match-card-wrapper.selected .btn-match-select {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+      box-shadow: 0 2px 10px rgba(220, 38, 38, 0.4);
     }
 
     /* Footer Nav */
@@ -2039,6 +2309,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     .btn-next { background: linear-gradient(180deg, #1565c0, #0d47a1); }
     .btn-finish { background: linear-gradient(180deg, #2e7d32, #1b5e20); display: none; }
     .btn-action:disabled { opacity: 0.3; cursor: not-allowed; }
+
     /* Toast Notification */
     .toast-notification {
       position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
@@ -2063,7 +2334,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         <h1>Configuração do Placar</h1>
       </div>
       <div style="display: flex; align-items: center; gap: 15px;">
-        <div class="wizard-status" id="step-status-text">Passo 1 de 4</div>
+        <div class="wizard-status" id="step-status-text">Passo 1 de 5</div>
         <button class="btn-action" style="background: #e53935; padding: 6px 12px; font-size: 14px; border-radius: 6px;" onclick="window.location.href='painel.html'">❌ Fechar</button>
       </div>
     </div>
@@ -2078,125 +2349,148 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </label>
     </div>
 
-    <!-- Stepper Navigation Header -->
+    <!-- Stepper Navigation Header (Passo 4: Rodada, Passo 5: Partida) -->
     <div id="wizard-container">
       <div class="stepper-bar">
-      <div class="step-indicator active" id="ind-1">
-        <div class="step-circle">1</div>
-        <span class="step-label">Domínio</span>
+        <div class="step-indicator active" id="ind-1">
+          <div class="step-circle">1</div>
+          <span class="step-label">Domínio</span>
+        </div>
+        <div class="step-indicator" id="ind-2">
+          <div class="step-circle">2</div>
+          <span class="step-label">Modalidade</span>
+        </div>
+        <div class="step-indicator" id="ind-3">
+          <div class="step-circle">3</div>
+          <span class="step-label">Campeonato</span>
+        </div>
+        <div class="step-indicator" id="ind-4">
+          <div class="step-circle">4</div>
+          <span class="step-label">Rodada</span>
+        </div>
+        <div class="step-indicator" id="ind-5">
+          <div class="step-circle">5</div>
+          <span class="step-label">Partida</span>
+        </div>
       </div>
-      <div class="step-indicator" id="ind-2">
-        <div class="step-circle">2</div>
-        <span class="step-label">Modalidade</span>
-      </div>
-      <div class="step-indicator" id="ind-3">
-        <div class="step-circle">3</div>
-        <span class="step-label">Campeonato</span>
-      </div>
-      <div class="step-indicator" id="ind-4">
-        <div class="step-circle">4</div>
-        <span class="step-label">Partida</span>
-      </div>
-    </div>
 
-    <!-- Step 1: Domínio -->
-    <div class="step-content active" id="step-1">
-      <div class="card-title">
-        🌐 Informar Domínio do Sistema
+      <!-- Step 1: Domínio -->
+      <div class="step-content active" id="step-1">
+        <div class="card-title">
+          🌐 Informar Domínio do Sistema
+        </div>
+        <div class="input-group">
+          <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
+          <input type="text" id="domainInput" class="input-field" placeholder="Ex: esportes7.com.br ou 192.168.1.100" value="esportes7.com.br">
+        </div>
+        <div class="input-group" style="margin-top: 15px;">
+          <label for="portInput">Porta do Servidor (Opcional)</label>
+          <input type="number" id="portInput" class="input-field" placeholder="Padrão: Vazio (HTTPS 443 / HTTP 80)" value="">
+        </div>
+        <div class="input-group" style="margin-top: 15px;">
+          <label for="prefixInput">Prefixo da API</label>
+          <input type="text" id="prefixInput" class="input-field" placeholder="Ex: /api/" value="/api/">
+        </div>
       </div>
-      <div class="input-group">
-        <label for="domainInput">Endereço do Domínio / IP do Servidor</label>
-        <input type="text" id="domainInput" class="input-field" placeholder="Ex: esportes7.com.br ou 192.168.1.100" value="esportes7.com.br">
-      </div>
-      <div class="input-group" style="margin-top: 15px;">
-        <label for="portInput">Porta do Servidor (Opcional)</label>
-        <input type="number" id="portInput" class="input-field" placeholder="Padrão: Vazio (HTTPS 443)" value="">
-      </div>
-      <div class="input-group" style="margin-top: 15px;">
-        <label for="prefixInput">Prefixo da API</label>
-        <input type="text" id="prefixInput" class="input-field" placeholder="Ex: /api/" value="/api/">
-      </div>
-    </div>
 
-    <!-- Step 2: Modalidade -->
-    <div class="step-content" id="step-2">
-      <div class="card-title">
-        🏆 Selecionar Modalidade
-      </div>
-      <div class="options-grid">
-        <div class="option-card selected" onclick="selectCard('modalidade', 'Futebol', this)">
-          ⚽
-          <span>Futebol</span>
+      <!-- Step 2: Modalidade -->
+      <div class="step-content" id="step-2">
+        <div class="card-title">
+          🏆 Selecionar Modalidade
         </div>
-        <div class="option-card" onclick="selectCard('modalidade', 'Vôlei', this)">
-          🏐
-          <span>Vôlei</span>
-        </div>
-        <div class="option-card" onclick="selectCard('modalidade', 'Natação', this)">
-          🏊
-          <span>Natação</span>
-        </div>
-        <div class="option-card" onclick="selectCard('modalidade', 'Corrida', this)">
-          🏃‍♀️
-          <span>Corrida</span>
+        <div class="options-grid">
+          <div class="option-card selected" onclick="selectCard('modalidade', 'Futebol', this)">
+            ⚽
+            <span>Futebol</span>
+          </div>
+          <div class="option-card" onclick="selectCard('modalidade', 'Vôlei', this)">
+            🏐
+            <span>Vôlei</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Step 3: Campeonato -->
-    <div class="step-content" id="step-3">
-      <div class="card-title">
-        🏆 Selecionar Campeonato
-      </div>
-      <div class="options-grid">
-        <div class="option-card selected" onclick="selectCard('campeonato', 'Campeonato 1', this)">
-          🏆
-          <span>Campeonato 1</span>
+      <!-- Step 3: Campeonato -->
+      <div class="step-content" id="step-3">
+        <div class="card-title">
+          🏆 Selecionar Campeonato
         </div>
-        <div class="option-card" onclick="selectCard('campeonato', 'Campeonato 2', this)">
-          🏆
-          <span>Campeonato 2</span>
+        <div class="options-grid">
+          <div class="option-card selected" onclick="selectCard('campeonato', '10', this)">
+            🏆
+            <span>Campeonato Principal</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Step 4: Partida -->
-    <div class="step-content" id="step-4">
-      <div class="card-title">
-        🎮 Selecionar Partida
-      </div>
-      <div class="options-grid">
-        <div class="option-card selected" onclick="selectCard('partida', 'Partida 1', this)">
-          🏁
-          <span>Partida 1</span>
+      <!-- Step 4: Rodada (Antes da Partida) -->
+      <div class="step-content" id="step-4">
+        <div class="card-title">
+          🔢 Passo 4: Selecionar Rodada
         </div>
-        <div class="option-card" onclick="selectCard('partida', 'Partida 2', this)">
-          🏁
-          <span>Partida 2</span>
+        <p style="font-size: 0.85rem; color: #888; margin-top: -10px; margin-bottom: 5px;">Selecione a rodada do campeonato para filtrar as partidas no próximo passo:</p>
+        <div class="options-grid">
+          <div class="option-card selected" onclick="selectCard('rodada', 'Todas as Rodadas', this)">
+            🔢
+            <span>Todas as Rodadas</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Footer Controls -->
-    <div class="footer-bar">
-      <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
-        ◀️ Anterior
-      </button>
+      <!-- Step 5: Partida (Depois da Rodada) -->
+      <div class="step-content" id="step-5">
+        <div class="card-title" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <span>⚽ Passo 5: Selecionar Partida</span>
+          <span id="matchRoundBadge" style="font-size: 0.75rem; color: #fff; background: #dc2626; padding: 4px 12px; border-radius: 12px; font-weight: 700; box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);">Todas as Rodadas</span>
+        </div>
+        <p style="font-size: 0.85rem; color: #888; margin-top: -10px; margin-bottom: 5px;">Confrontos da rodada selecionada. Clique no botão da partida para acompanhar no placar:</p>
+        <div id="matchesContainer" class="matches-list-grid">
+          <!-- Cards de partidas inseridos dinamicamente aqui -->
+        </div>
+      </div>
 
-      <div style="display: flex; gap: 10px;">
-        <button class="btn-action btn-next" id="btnNext" onclick="changeStep(1)">
-          Próximo ▶️
+      <!-- Footer Controls -->
+      <div class="footer-bar">
+        <button class="btn-action btn-prev" id="btnPrev" onclick="changeStep(-1)" disabled>
+          ◀️ Anterior
         </button>
-        <button class="btn-action btn-finish" id="btnFinish" onclick="finishWizard()">
-          ✅ Concluir
-        </button>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-action btn-next" id="btnNext" onclick="changeStep(1)">
+            Próximo ▶️
+          </button>
+          <button class="btn-action btn-finish" id="btnFinish" onclick="finishWizard()">
+            ✅ Concluir
+          </button>
+        </div>
       </div>
-    </div>
     </div> <!-- End wizard-container -->
 
-    <!-- Container do Manual -->
+    <!-- Container do Manual (Rodada antes da Partida) -->
     <div id="manual-container" style="display: none; padding: 20px; background: #1a1a1a; border-radius: 12px; margin-top: 15px;">
-     
+      <div class="card-title" style="margin-bottom: 20px; text-align: center;">✍️ Configuração Manual do Placar</div>
+      
+      <div class="input-group">
+        <label>Endereço do Domínio / IP (Opcional)</label>
+        <input type="text" id="manual_dominio" class="input-field" value="esportes7.com.br">
+      </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label>Modalidade</label>
+        <input type="text" id="manual_modalidade" class="input-field" placeholder="Ex: Futebol">
+      </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label>Campeonato</label>
+        <input type="text" id="manual_campeonato" class="input-field" placeholder="Ex: Campeonato Regional">
+      </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label>Rodada</label>
+        <input type="text" id="manual_rodada" class="input-field" placeholder="Ex: Rodada 1 ou Final">
+      </div>
+      <div class="input-group" style="margin-top: 15px;">
+        <label>Partida</label>
+        <input type="text" id="manual_partida" class="input-field" placeholder="Ex: Time A x Time B">
+      </div>
+
       <button class="btn-action btn-finish" style="width: 100%; margin-top: 20px; justify-content: center;" onclick="saveManualConfig()">
         ✅ Salvar Configuração Manual
       </button>
@@ -2226,7 +2520,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     let currentStep = 1;
-    const totalSteps = 4;
+    const totalSteps = 5;
     let currentMode = 'automatico';
 
     function toggleMode() {
@@ -2254,6 +2548,7 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       dominio: 'https://esportes7.com.br/',
       modalidade: '',
       campeonato: '',
+      rodada: 'Todas as Rodadas',
       partida: ''
     };
 
@@ -2286,17 +2581,24 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         let displayIcon = iconClass;
         if (field === 'modalidade') {
           const lowerName = (item.nome || '').toLowerCase();
-          if (lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = '⚽';
+          if (lowerName.includes('futebol 7')) displayIcon = '⚽';
+          else if (lowerName.includes('futsal') || lowerName.includes('futebol') || lowerName.includes('soccer')) displayIcon = '⚽';
+          else if (lowerName.includes('futev')) displayIcon = '🏐';
+          else if (lowerName.includes('praia') && lowerName.includes('vôlei')) displayIcon = '🏖️';
           else if (lowerName.includes('vôlei') || lowerName.includes('volei') || lowerName.includes('volley')) displayIcon = '🏐';
+          else if (lowerName.includes('beach')) displayIcon = '🏖️';
+          else if (lowerName.includes('mesa')) displayIcon = '🏓';
+          else if (lowerName.includes('tênis') || lowerName.includes('tenis')) displayIcon = '🎾';
           else if (lowerName.includes('nata') || lowerName.includes('swim')) displayIcon = '🏊';
           else if (lowerName.includes('corri') || lowerName.includes('run')) displayIcon = '🏃';
           else if (lowerName.includes('basque') || lowerName.includes('basket')) displayIcon = '🏀';
-          else if (lowerName.includes('tênis') || lowerName.includes('tenis')) displayIcon = '🎾';
           else if (lowerName.includes('hand')) displayIcon = '🤾';
+          else if (lowerName.includes('jiu')) displayIcon = '🥋';
+          else if (lowerName.includes('cicl') || lowerName.includes('bike') || lowerName.includes('mtb')) displayIcon = '🚴';
         } else if (field === 'campeonato') {
           displayIcon = '🏆';
-        } else if (field === 'partida') {
-          displayIcon = '🏁';
+        } else if (field === 'rodada') {
+          displayIcon = '🔢';
         }
         
         card.onclick = () => selectCard(field, item.id, card);
@@ -2358,14 +2660,37 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       return `${protocol}//${hostPort}${prefix}`;
     }
 
+    function fetchApiResource(targetUrl) {
+      // 1. Tentar primeiro o link direto
+      return fetch(targetUrl)
+        .then(r => {
+          if (!r.ok) throw new Error('API direta erro: ' + r.status);
+          return r.json();
+        })
+        .catch(directErr => {
+          console.warn('Acesso direto indisponível (CORS), tentando proxy do ESP32:', directErr);
+          // 2. Se falhar no acesso direto (CORS), tenta o proxy local do ESP32
+          return fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`)
+            .then(r => {
+              if (!r.ok) throw new Error('Proxy ESP32 erro: ' + r.status);
+              return r.json();
+            })
+            .catch(proxyErr => {
+              console.warn('Proxy ESP32 indisponível (ESP32 sem internet), tentando proxy CORS web alternativo:', proxyErr);
+              // 3. Fallback inteligente: Proxy CORS público
+              return fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`)
+                .then(r => {
+                  if (!r.ok) throw new Error('CORS web proxy erro: ' + r.status);
+                  return r.json();
+                });
+            });
+        });
+    }
+
     function fetchModalidades(callback) {
       const url = `${getApiBaseUrl()}sports`;
-      console.log('Requisitando modalidades diretamente em:', url);
-      fetch(url)
-      .then(r => {
-        if (!r.ok) throw new Error('API erro: ' + r.status);
-        return r.json();
-      })
+      console.log('Requisitando modalidades em:', url);
+      fetchApiResource(url)
       .then(data => {
         const list = Array.isArray(data) ? data : (data.data || data.modalidades || data.sports || []);
         const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Modalidade' }));
@@ -2373,41 +2698,35 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         callback();
       })
       .catch(err => {
-        console.warn('Falha direta em ' + url + ' (' + err.message + '). Tentando fallback via proxy...');
-        fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
-        .then(r => {
-          if (!r.ok) throw new Error('Proxy erro: ' + r.status);
-          return r.json();
-        })
-        .then(data => {
-          const list = Array.isArray(data) ? data : (data.data || data.modalidades || data.sports || []);
-          const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || 'Modalidade' }));
-          populateStepOptions('step-2', 'modalidade', mapped, '⚽');
-          callback();
-        })
-        .catch(err2 => {
-          console.warn('Usando fallback local de modalidades...', err2);
-          const data = [
-            { id: 1, nome: 'Futebol' },
-            { id: 2, nome: 'Vôlei' },
-            { id: 3, nome: 'Basquete' },
-            { id: 4, nome: 'Futsal' }
-          ];
-          populateStepOptions('step-2', 'modalidade', data, '⚽');
-          callback();
-        });
+        console.warn('Usando fallback local de modalidades...', err);
+        const data = [
+          { id: 1, nome: 'Futebol' },
+          { id: 2, nome: 'Vôlei' },
+          { id: 3, nome: 'Corrida' },
+          { id: 4, nome: 'Tênis' },
+          { id: 5, nome: 'Futsal' },
+          { id: 6, nome: 'Basquete' },
+          { id: 7, nome: 'Handebol' },
+          { id: 8, nome: 'Futebol 7' },
+          { id: 9, nome: 'Futevôlei' },
+          { id: 10, nome: 'Beach Tennis' },
+          { id: 11, nome: 'Tênis de Mesa' },
+          { id: 12, nome: 'Vôlei de Praia' },
+          { id: 13, nome: 'Jiu-Jitsu' },
+          { id: 14, nome: 'Ciclismo' },
+          { id: 15, nome: 'MTB' },
+          { id: 16, nome: 'Natação' }
+        ];
+        populateStepOptions('step-2', 'modalidade', data, '⚽');
+        callback();
       });
     }
 
     function fetchCampeonatos(mod, callback) {
       let queryParam = mod ? `?sport_id=${encodeURIComponent(mod)}` : '';
       const url = `${getApiBaseUrl()}clubs/1/championships${queryParam}`;
-      console.log('Requisitando campeonatos diretamente em:', url);
-      fetch(url)
-      .then(r => {
-        if (!r.ok) throw new Error('API erro: ' + r.status);
-        return r.json();
-      })
+      console.log('Requisitando campeonatos em:', url);
+      fetchApiResource(url)
       .then(data => {
         const list = Array.isArray(data) ? data : (data.data || data.campeonatos || data.championships || []);
         const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || item.title || 'Campeonato' }));
@@ -2415,72 +2734,257 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         callback();
       })
       .catch(err => {
-        console.warn('Falha direta em campeonatos, tentando proxy...', err);
-        fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
-        .then(r => {
-          if (!r.ok) throw new Error('Proxy erro: ' + r.status);
-          return r.json();
-        })
-        .then(data => {
-          const list = Array.isArray(data) ? data : (data.data || data.campeonatos || data.championships || []);
-          const mapped = list.map(item => ({ id: item.id, nome: item.name || item.nome || item.title || 'Campeonato' }));
-          populateStepOptions('step-3', 'campeonato', mapped, '🏆');
-          callback();
-        })
-        .catch(e => {
-          const data = [
-            { id: 1, nome: 'Campeonato Principal' }
-          ];
-          populateStepOptions('step-3', 'campeonato', data, '🏆');
-          callback();
-        });
+        console.warn('Usando fallback local de campeonatos...', err);
+        const data = [
+          { id: 10, nome: 'Campeonato Listão' },
+          { id: 88, nome: 'TESTE FUTSAL-FUT7' }
+        ];
+        populateStepOptions('step-3', 'campeonato', data, '🏆');
+        callback();
       });
     }
 
-    function fetchPartidas(camp, callback) {
-      const url = `${getApiBaseUrl()}championships/${encodeURIComponent(camp)}/matches`;
-      console.log('Requisitando partidas diretamente em:', url);
-      fetch(url)
-      .then(r => {
-        if (!r.ok) throw new Error('API erro: ' + r.status);
-        return r.json();
-      })
+    // Armazenamento em memória das partidas do campeonato atual
+    let allMatchesList = [];
+
+    // Passo 4: Buscar Partidas e extrair Rodadas (Rodada antes da Partida)
+    function fetchRoundsForChampionship(campId, callback) {
+      const url = `${getApiBaseUrl()}championships/${encodeURIComponent(campId)}/matches`;
+      console.log('Requisitando partidas e rodadas em:', url);
+      fetchApiResource(url)
       .then(data => {
         const list = Array.isArray(data) ? data : (data.data || data.partidas || data.matches || []);
-        const mapped = list.map(item => {
-          let home = (item.home_team && item.home_team.name) ? item.home_team.name : (item.time_casa || item.home_team_name || 'TBA');
-          let away = (item.away_team && item.away_team.name) ? item.away_team.name : (item.time_visitante || item.away_team_name || 'TBA');
-          let label = item.nome || (home + ' x ' + away);
-          return { id: item.id, nome: label };
+        allMatchesList = list;
+
+        // Extrair rodadas únicas das partidas
+        const roundSet = new Set();
+        list.forEach(m => {
+          if (m.round_name && m.round_name.trim()) roundSet.add(m.round_name.trim());
+          else if (m.round_number) roundSet.add(`Rodada ${m.round_number}`);
+          else if (m.group_name && m.group_name.trim()) roundSet.add(m.group_name.trim());
         });
-        populateStepOptions('step-4', 'partida', mapped, '🏁');
+
+        const roundsList = [{ id: 'Todas as Rodadas', nome: 'Todas as Rodadas' }];
+        roundSet.forEach(r => {
+          roundsList.push({ id: r, nome: r });
+        });
+
+        if (roundsList.length === 1) {
+          // Se o campeonato não tiver nomes de rodada cadastrados nas partidas, fornecer opções padrão
+          ['Rodada 1', 'Rodada 2', 'Rodada 3', 'Fase de Grupos', 'Oitavas de Final', 'Quartas de Final', 'Semifinal', 'Final'].forEach(r => {
+            roundsList.push({ id: r, nome: r });
+          });
+        }
+
+        populateStepOptions('step-4', 'rodada', roundsList, '🔢');
         callback();
       })
       .catch(err => {
-        console.warn('Falha direta em partidas, tentando proxy...', err);
-        fetch(`/api/proxy?url=${encodeURIComponent(url)}`)
-        .then(r => {
-          if (!r.ok) throw new Error('Proxy erro: ' + r.status);
-          return r.json();
-        })
-        .then(data => {
-          const list = Array.isArray(data) ? data : (data.data || data.partidas || data.matches || []);
-          const mapped = list.map(item => {
-            let home = (item.home_team && item.home_team.name) ? item.home_team.name : (item.time_casa || item.home_team_name || 'TBA');
-            let away = (item.away_team && item.away_team.name) ? item.away_team.name : (item.time_visitante || item.away_team_name || 'TBA');
-            let label = item.nome || (home + ' x ' + away);
-            return { id: item.id, nome: label };
-          });
-          populateStepOptions('step-4', 'partida', mapped, '🏁');
-          callback();
-        })
-        .catch(e => {
-          const data = [
-            { id: 1, nome: 'Partida Demo 1' }
-          ];
-          populateStepOptions('step-4', 'partida', data, '🏁');
-          callback();
+        console.warn('Erro ao buscar partidas/rodadas da API, usando padrão...', err);
+        allMatchesList = [];
+        const roundsList = [
+          { id: 'Todas as Rodadas', nome: 'Todas as Rodadas' },
+          { id: 'Rodada 1', nome: 'Rodada 1' },
+          { id: 'Rodada 2', nome: 'Rodada 2' },
+          { id: 'Rodada 3', nome: 'Rodada 3' },
+          { id: 'Semifinal', nome: 'Semifinal' },
+          { id: 'Final', nome: 'Final' }
+        ];
+        populateStepOptions('step-4', 'rodada', roundsList, '🔢');
+        callback();
+      });
+    }
+
+    function formatMatchDateTime(dtString) {
+      if (!dtString) return { date: '01/02/2026', time: '21:00' };
+      try {
+        const d = new Date(dtString);
+        if (isNaN(d.getTime())) return { date: '01/02/2026', time: '21:00' };
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        return {
+          date: `${day}/${month}/${year}`,
+          time: `${hours}:${mins}`
+        };
+      } catch (e) {
+        return { date: '01/02/2026', time: '21:00' };
+      }
+    }
+
+    function getTeamLogoHtml(logoUrl, teamName) {
+      if (logoUrl && (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
+        return `<img src="${logoUrl}" alt="${teamName}" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(teamName || 'TM')}&background=111827&color=ffffff&bold=true';" />`;
+      }
+      return `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(teamName || 'TM')}&background=111827&color=ffffff&bold=true" alt="${teamName}" />`;
+    }
+
+    function selectMatchCard(matchId, cardEl) {
+      wizardData.partida = matchId;
+      const container = document.getElementById('matchesContainer');
+      if (container) {
+        const cards = container.querySelectorAll('.match-card-wrapper');
+        cards.forEach(c => {
+          c.classList.remove('selected');
+          const btn = c.querySelector('.btn-match-select');
+          if (btn) btn.innerHTML = '<span class="btn-icon">👁️</span> Acompanhar Ao Vivo';
         });
+      }
+      if (cardEl) {
+        cardEl.classList.add('selected');
+        const btn = cardEl.querySelector('.btn-match-select');
+        if (btn) btn.innerHTML = '<span class="btn-icon">✓</span> Partida Selecionada';
+      }
+    }
+
+    // Passo 5: Renderizar Partidas com o Layout Solicitado
+    function renderMatchesForSelectedRound(selectedRound) {
+      const badge = document.getElementById('matchRoundBadge');
+      if (badge) badge.innerText = selectedRound || 'Todas as Rodadas';
+
+      let filtered = allMatchesList;
+      if (selectedRound && selectedRound !== 'Todas as Rodadas') {
+        const f = allMatchesList.filter(m => {
+          const rName = (m.round_name || '').trim();
+          const rNum = m.round_number ? `Rodada ${m.round_number}` : '';
+          const gName = (m.group_name || '').trim();
+          return rName === selectedRound || rNum === selectedRound || gName === selectedRound;
+        });
+        if (f.length > 0) filtered = f;
+      }
+
+      // Se a API não retornou partidas cadastradas no campeonato, exibir partidas com o modelo visual exato do print
+      if (!filtered || filtered.length === 0) {
+        filtered = [
+          {
+            id: '2026_cam_mar',
+            start_time: '2026-02-01T21:00:00.000000Z',
+            location: 'A definir',
+            home_team: {
+              name: 'Camarões',
+              logo_url: 'https://flagcdn.com/w160/cm.png'
+            },
+            away_team: {
+              name: 'Marrocos',
+              logo_url: 'https://flagcdn.com/w160/ma.png'
+            },
+            home_score: 3,
+            away_score: 2,
+            status: 'in_progress',
+            clock: '00:00'
+          },
+          {
+            id: '2026_lib_boc',
+            start_time: '2026-02-02T19:30:00.000000Z',
+            location: 'Arena Principal',
+            home_team: {
+              name: 'Libertad',
+              logo_url: 'https://sgce.clubetoledao.com.br/assets/logos/bra_1755011784.png'
+            },
+            away_team: {
+              name: 'Boca Juniors',
+              logo_url: 'https://sgce.clubetoledao.com.br/assets/logos/bra_1755010583.png'
+            },
+            home_score: 5,
+            away_score: 5,
+            status: 'finished',
+            clock: 'FIM'
+          }
+        ];
+      }
+
+      const container = document.getElementById('matchesContainer');
+      container.innerHTML = '';
+
+      filtered.forEach((m, idx) => {
+        const isSelected = (idx === 0);
+        if (isSelected) {
+          wizardData.partida = m.id;
+        }
+
+        const dt = formatMatchDateTime(m.start_time);
+        const homeName = (m.home_team && m.home_team.name) ? m.home_team.name : (m.home_team_name || 'Mandante');
+        const awayName = (m.away_team && m.away_team.name) ? m.away_team.name : (m.away_team_name || 'Visitante');
+        const homeLogo = (m.home_team && m.home_team.logo_url) ? m.home_team.logo_url : '';
+        const awayLogo = (m.away_team && m.away_team.logo_url) ? m.away_team.logo_url : '';
+        const homeScore = (m.home_score !== null && m.home_score !== undefined) ? m.home_score : 0;
+        const awayScore = (m.away_score !== null && m.away_score !== undefined) ? m.away_score : 0;
+        const loc = m.location || 'A definir';
+
+        let statusText = 'AO VIVO';
+        let statusClass = '';
+        let clockText = m.clock || '00:00';
+
+        if (m.status === 'finished') {
+          statusText = 'ENCERRADO';
+          statusClass = 'finished';
+          clockText = 'FIM';
+        } else if (m.status === 'scheduled') {
+          statusText = 'AGENDADO';
+          statusClass = 'scheduled';
+          clockText = dt.time || '--:--';
+        }
+
+        const card = document.createElement('div');
+        card.className = `match-card-wrapper ${isSelected ? 'selected' : ''}`;
+        card.onclick = () => selectMatchCard(m.id, card);
+
+        card.innerHTML = `
+          <div class="match-card-top-bar"></div>
+          <div class="match-card-inner">
+            <div class="match-card-header">
+              <div class="match-date-time">
+                <span>📅</span> <span>${dt.date}</span>
+                <span class="m-dot">•</span>
+                <span>🕒</span> <span>${dt.time}</span>
+              </div>
+              <div class="match-location">
+                <span>📍</span> <span>${loc}</span>
+              </div>
+            </div>
+
+            <div class="match-confronto">
+              <div class="match-team home-team">
+                <div class="team-logo-badge">
+                  ${getTeamLogoHtml(homeLogo, homeName)}
+                </div>
+                <span class="team-name" title="${homeName}">${homeName}</span>
+              </div>
+
+              <div class="match-center">
+                <div class="match-score">
+                  <span class="score-num">${homeScore}</span>
+                  <span class="score-x">x</span>
+                  <span class="score-num">${awayScore}</span>
+                </div>
+                <div class="match-status-badge ${statusClass}">
+                  ${statusText}
+                </div>
+                <div class="match-clock">
+                  ${clockText}
+                </div>
+              </div>
+
+              <div class="match-team away-team">
+                <div class="team-logo-badge">
+                  ${getTeamLogoHtml(awayLogo, awayName)}
+                </div>
+                <span class="team-name" title="${awayName}">${awayName}</span>
+              </div>
+            </div>
+
+            <div class="match-card-footer">
+              <button type="button" class="btn-match-select">
+                <span class="btn-icon">${isSelected ? '✓' : '👁️'}</span>
+                <span>${isSelected ? 'Partida Selecionada' : 'Acompanhar Ao Vivo'}</span>
+              </button>
+            </div>
+          </div>
+        `;
+
+        container.appendChild(card);
       });
     }
 
@@ -2507,7 +3011,13 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           fetchCampeonatos(wizardData.modalidade, () => proceed());
           return;
         } else if (currentStep === 3) {
-          fetchPartidas(wizardData.campeonato, () => proceed());
+          // Do Passo 3 (Campeonato) para o Passo 4 (Rodada)
+          fetchRoundsForChampionship(wizardData.campeonato, () => proceed());
+          return;
+        } else if (currentStep === 4) {
+          // Do Passo 4 (Rodada) para o Passo 5 (Partida)
+          renderMatchesForSelectedRound(wizardData.rodada);
+          proceed();
           return;
         }
       }
@@ -2548,6 +3058,10 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
 
     function finishWizard() {
       wizardData.mode = "automatico";
+      wizardData.active = true;
+      wizardData.campeonatoId = wizardData.campeonato;
+      wizardData.partidaId = wizardData.partida;
+      wizardData.rodadaId = wizardData.rodada;
       const port = document.getElementById('portInput') ? document.getElementById('portInput').value.trim() : '';
       const prefix = document.getElementById('prefixInput') ? document.getElementById('prefixInput').value.trim() : '/api/';
       wizardData.porta = (port && port !== '0' && port !== '80' && port !== '443' && port !== '8080') ? parseInt(port, 10) : 0;
@@ -2571,12 +3085,20 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     }
 
     function saveManualConfig() {
+      const camp = document.getElementById('manual_campeonato').value.trim();
+      const rod = document.getElementById('manual_rodada').value.trim();
+      const part = document.getElementById('manual_partida').value.trim();
       const data = {
         mode: "manual",
+        active: false,
         dominio: document.getElementById('manual_dominio').value.trim(),
         modalidade: document.getElementById('manual_modalidade').value.trim(),
-        campeonato: document.getElementById('manual_campeonato').value.trim(),
-        partida: document.getElementById('manual_partida').value.trim()
+        campeonato: camp,
+        rodada: rod,
+        partida: part,
+        campeonatoId: camp,
+        rodadaId: rod,
+        partidaId: part
       };
       
       fetch('/api/automation/config', {
@@ -2630,6 +3152,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Placar Eletrônico - Esporte7 System</title>
 
+  <link rel="icon" href="data:,">
   <style>
     * {
       box-sizing: border-box;
@@ -2711,38 +3234,58 @@ const char painel_html[] PROGMEM = R"rawliteral(
       background: #111;
       border: 4px solid #333;
       border-radius: 12px;
-      padding: 10px 20px;
+      padding: 8px 18px;
       box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.9), 0 4px 10px rgba(0,0,0,0.5);
       display: flex;
       justify-content: center;
       align-items: center;
+      box-sizing: border-box;
+      min-height: 80px;
+    }
+
+    .row-middle .led-frame {
+      min-height: 110px;
+      padding: 10px 24px;
     }
 
     .led-text {
-      font-family: 'Orbitron', monospace;
+      font-family: 'Orbitron', 'Consolas', 'Courier New', 'Roboto Mono', monospace;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-feature-settings: "tnum" 1;
+      font-feature-settings: "tnum" 1;
       color: #ff1a1a;
       text-shadow: 0 0 12px rgba(255, 26, 26, 0.8), 0 0 25px rgba(255, 0, 0, 0.4);
-      line-height: 1;
+      line-height: 1.1;
     }
 
-    .digits-2 { font-size: 3.8rem; letter-spacing: 4px; }
-    .digits-3 { font-size: 3.5rem; letter-spacing: 3px; }
-    .digits-timer { font-size: 5rem; letter-spacing: 6px; padding: 10px 30px; }
+    .digits-2 { font-size: 3.8rem; letter-spacing: 3px; }
+    .digits-3 { font-size: 3.5rem; letter-spacing: 2px; }
+    .digits-timer { font-size: 5rem; letter-spacing: 3px; }
 
     input.led-text {
       background: transparent;
       border: none;
       outline: none;
       text-align: center;
-      width: 1.5em;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-feature-settings: "tnum" 1;
+      font-feature-settings: "tnum" 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: clip;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+    input.led-text.digits-2 {
+      width: 2.3ch;
     }
     input.led-text.digits-3 {
-      width: 2.2em;
+      width: 3.4ch;
     }
     /* Timer input needs wider width for HH:MM:SS */
     input.led-text.digits-timer {
-      width: 11ch;
-      letter-spacing: 4px;
+      width: 9.2ch;
     }
     input.led-text[readonly] { pointer-events: none; }
 
@@ -3132,14 +3675,17 @@ const char painel_html[] PROGMEM = R"rawliteral(
     let swapped = false;
     let currentPanelMode = 'automatico';
 
-    // Atualização dos campos da interface mantendo campos em foco intactos
+    // Atualização dos campos da interface mantendo campos em foco intactos e evitando re-renderização desnecessária
     function applyScoreboardState(data) {
       if (!data) return;
       const setVal = (id, val) => {
         const el = document.getElementById(id);
         if (el && document.activeElement !== el) {
           const padLen = (id === 'score-a' || id === 'score-b') ? 3 : 2;
-          el.value = String(val).padStart(padLen, '0');
+          const newVal = String(val).padStart(padLen, '0');
+          if (el.value !== newVal) {
+            el.value = newVal;
+          }
         }
       };
       if (data.scoreA !== undefined) setVal('score-a', data.scoreA);
@@ -3150,7 +3696,18 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
       const timerEl = document.getElementById('timer-display');
       if (timerEl && document.activeElement !== timerEl && data.timer) {
-        timerEl.value = data.timer;
+        if (timerEl.value !== data.timer) {
+          timerEl.value = data.timer;
+        }
+      }
+      
+      if (data.teamNameA) {
+        const titleA = document.getElementById('title-team-a');
+        if (titleA) titleA.innerText = data.teamNameA.toUpperCase();
+      }
+      if (data.teamNameB) {
+        const titleB = document.getElementById('title-team-b');
+        if (titleB) titleB.innerText = data.teamNameB.toUpperCase();
       }
       
       if (data.totalSeconds !== undefined) {
@@ -3163,25 +3720,79 @@ const char painel_html[] PROGMEM = R"rawliteral(
       }
     }
 
-    // Atualização automática dos campos via AJAX a cada 1 segundo (SOMENTE no modo automático)
+    // Cache da configuração salva no ESP32
+    let autoConfigCache = null;
+    function refreshAutoConfig() {
+      fetch('/api/automation/status')
+        .then(r => r.json())
+        .then(data => { autoConfigCache = data; })
+        .catch(() => {});
+    }
+    refreshAutoConfig();
+
+    // Atualização automática via rota externa da API (via Proxy ESP32) a cada 1 segundo (SOMENTE no modo automático)
     let isFetchingState = false;
     function pollScoreboardAjax() {
-      // Se não estiver no modo automático, não realiza AJAX
       if (currentPanelMode !== 'automatico') return;
       if (isFetchingState) return;
       isFetchingState = true;
-      fetch('/api/scoreboard/state')
+
+      // Rota externa configurada do campeonato (padrão 76)
+      const campId = (autoConfigCache && autoConfigCache.campeonato && autoConfigCache.campeonato !== '10') ? autoConfigCache.campeonato : '76';
+      const targetApiUrl = `https://esportes7.com.br/api/championships/${encodeURIComponent(campId)}/matches`;
+      const proxyUrl = `/api/proxy?url=${encodeURIComponent(targetApiUrl)}`;
+
+      fetch(proxyUrl)
         .then(response => {
           if (!response.ok) throw new Error('HTTP ' + response.status);
           return response.json();
         })
-        .then(data => {
-          if (currentPanelMode === 'automatico') {
-            applyScoreboardState(data);
+        .then(matchesList => {
+          if (currentPanelMode === 'automatico' && Array.isArray(matchesList) && matchesList.length > 0) {
+            let match = null;
+            if (autoConfigCache && autoConfigCache.partida) {
+              match = matchesList.find(m => String(m.id) === String(autoConfigCache.partida));
+            }
+            if (!match) {
+              match = matchesList.find(m => m.status === 'live' || m.status === 'in_progress') || matchesList[0];
+            }
+
+            if (match) {
+              const stateData = {
+                scoreA: match.home_score !== undefined ? match.home_score : 0,
+                scoreB: match.away_score !== undefined ? match.away_score : 0,
+                teamNameA: match.home_team ? match.home_team.name : 'TIME A',
+                teamNameB: match.away_team ? match.away_team.name : 'TIME B',
+                period: match.round_number || 1
+              };
+
+              if (match.events && Array.isArray(match.events)) {
+                const timerEvents = match.events.filter(e => e.event_type === 'timer_control');
+                if (timerEvents.length > 0) {
+                  const lastTimer = timerEvents[timerEvents.length - 1];
+                  if (lastTimer.game_time) stateData.timer = lastTimer.game_time;
+                }
+              }
+
+              applyScoreboardState(stateData);
+
+              // Atualiza sincronização com os LEDs físicos do ESP32
+              sendScoreboardAction({
+                action: 'sync_external',
+                scoreA: stateData.scoreA,
+                scoreB: stateData.scoreB
+              });
+            }
           }
         })
         .catch(err => {
-          // Erro de rede transitório ou ambiente de demonstração
+          // Fallback para estado interno local se a requisição externa falhar
+          fetch('/api/scoreboard/state')
+            .then(r => r.json())
+            .then(data => {
+              if (currentPanelMode === 'automatico') applyScoreboardState(data);
+            })
+            .catch(() => {});
         })
         .finally(() => {
           isFetchingState = false;
@@ -3205,8 +3816,17 @@ const char painel_html[] PROGMEM = R"rawliteral(
     }
 
     function connectWs() {
+      if (window.location.protocol === 'https:') {
+        console.log('Painel conectado via HTTPS: sincronização automática do placar operando via AJAX seguro a cada 1s.');
+        return;
+      }
       const host = window.location.hostname || '192.168.4.1';
-      ws = new WebSocket(`ws://${host}:81/`);
+      try {
+        ws = new WebSocket(`ws://${host}:81/`);
+      } catch (e) {
+        console.warn('WebSocket não pôde ser iniciado em contexto seguro:', e);
+        return;
+      }
 
       ws.onopen = () => {
         console.log('WebSocket conectado!');
@@ -3224,8 +3844,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
       };
 
       ws.onclose = () => {
-        console.warn('WebSocket desconectado. Tentando reconectar...');
-        setTimeout(connectWs, 2000);
+        setTimeout(connectWs, 5000);
       };
     }
 
@@ -3260,22 +3879,29 @@ const char painel_html[] PROGMEM = R"rawliteral(
       sendScoreboardAction({ action: 'set', target: id, value: val });
     }
 
-    function setPanelMode(mode) {
+    function setPanelMode(mode, saveToServer = true) {
       currentPanelMode = mode;
       const isAuto = (mode === 'automatico');
-      fetch('/api/automation/mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: mode })
-      }).catch(e => console.warn('Falha ao salvar modo', e));
+      if (saveToServer) {
+        fetch('/api/automation/mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: mode })
+        }).catch(e => console.warn('Falha ao salvar modo', e));
+      }
 
-      document.querySelectorAll('.btn-controls').forEach(el => {
-        el.style.display = isAuto ? 'none' : 'flex';
+      // Manter botões no layout (sem display: none) para evitar tremor/salto estrutural na tela
+      document.querySelectorAll('.btn-step').forEach(btn => {
+        btn.disabled = isAuto;
+        btn.style.opacity = isAuto ? '0.35' : '1';
+        btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
+        btn.style.pointerEvents = isAuto ? 'none' : 'auto';
       });
       document.querySelectorAll('.timer-actions button').forEach(btn => {
         btn.disabled = isAuto;
-        btn.style.opacity = isAuto ? '0.5' : '1';
+        btn.style.opacity = isAuto ? '0.4' : '1';
         btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
+        btn.style.pointerEvents = isAuto ? 'none' : 'auto';
       });
       document.querySelectorAll('input.led-text').forEach(input => {
         if (isAuto) input.setAttribute('readonly', 'true');
@@ -3491,16 +4117,16 @@ const char painel_html[] PROGMEM = R"rawliteral(
     pollScoreboardAjax();
     setInterval(pollScoreboardAjax, 1000);
 
-    // Obter modo salvo no ESP32
+    // Obter modo salvo no ESP32 sem reenviar POST redundante
     fetch('/api/automation/status')
       .then(r => r.json())
       .then(data => {
         const mode = data.mode || 'automatico';
         const radio = document.querySelector(`input[name="panelMode"][value="${mode}"]`);
         if (radio) radio.checked = true;
-        setPanelMode(mode);
+        setPanelMode(mode, false);
       })
-      .catch(() => setPanelMode('automatico'));
+      .catch(() => setPanelMode('automatico', false));
 
     const role = sessionStorage.getItem('role') || 'Operador';
     if (role === 'Operador') {
@@ -3513,6 +4139,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
 const char ssid_config_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -3711,4 +4338,4 @@ const char ssid_config_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-#endif // WEB_PAGES_H
+#endif

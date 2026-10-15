@@ -3,7 +3,8 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WebServer.h>
+#include <ESPWebServerSecure.hpp>
+#include "Certificates.h"
 #include <WebSocketsServer.h>
 #include <ESPmDNS.h>
 #include <Preferences.h>
@@ -47,7 +48,8 @@ extern AutomationConfig automationConfig;
 extern Preferences preferences;
 extern DNSServer dnsServer;
 
-extern WebServer* server;
+extern ESPWebServer* server;
+extern ESPWebServerSecure* httpsServer;
 extern WebSocketsServer* webSocket;
 
 extern int scoreA;
