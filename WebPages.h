@@ -2322,6 +2322,58 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
     .toast-success { border-left: 5px solid #4CAF50; }
     .toast-error { border-left: 5px solid #F44336; }
     .toast-info { border-left: 5px solid #2196F3; }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 6px 4px;
+      }
+      .main-container {
+        padding: 12px 8px;
+        border-radius: 10px;
+        gap: 15px;
+      }
+      .header-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .header-title h1 {
+        font-size: 1.1rem;
+      }
+      .mode-selector {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9em;
+      }
+      .mode-selector label {
+        margin-right: 0 !important;
+        font-size: 0.85em !important;
+      }
+      .stepper-bar {
+        gap: 3px;
+      }
+      .step-circle {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+      }
+      .step-label {
+        font-size: 0.6rem;
+      }
+      .options-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .footer-bar {
+        padding-top: 12px;
+      }
+      .btn-action {
+        padding: 10px 14px;
+        font-size: 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -2344,8 +2396,11 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
         <input type="radio" name="automationMode" value="automatico" checked onchange="toggleMode()"> 🤖 Automático (Via API)
       </label>
-      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+      <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
         <input type="radio" name="automationMode" value="manual" onchange="toggleMode()"> ✍️ Manual (Local)
+      </label>
+      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="teste" onchange="toggleMode()"> 🧪 Teste (0 a 9)
       </label>
     </div>
 
@@ -2496,6 +2551,19 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </button>
     </div>
 
+    <!-- Container do Teste -->
+    <div id="test-container" style="display: none; padding: 25px; background: #1a1a1a; border-radius: 12px; margin-top: 15px; border: 1px solid #4d4d00; text-align: center;">
+      <div style="font-size: 2.2rem; margin-bottom: 10px;">🧪</div>
+      <div class="card-title" style="margin-bottom: 12px; color: #fde047;">Modo de Teste de Dígitos</div>
+      <p style="color: #ccc; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">
+        Neste modo, todos os 18 dígitos do placar (placar A, placar B, faltas, período e cronômetro) ficam ciclando continuamente de <strong>0 a 9</strong> a cada <strong>1 segundo</strong> para teste visual e validação dos módulos LED.
+      </p>
+      <div style="display: inline-flex; align-items: center; gap: 10px; background: #262626; padding: 10px 20px; border-radius: 8px; border: 1px solid #444; color: #fff; font-weight: 600;">
+        <span>Status do Modo:</span>
+        <span style="color: #4ade80;">Ativo e ciclando em tempo real</span>
+      </div>
+    </div>
+
   </div>
 
   <div id="toast" class="toast-notification">
@@ -2534,12 +2602,22 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         body: JSON.stringify(wizardData)
       }).catch(e => console.log(e));
 
+      const wiz = document.getElementById('wizard-container');
+      const man = document.getElementById('manual-container');
+      const tst = document.getElementById('test-container');
+
       if (mode === 'automatico') {
-        document.getElementById('wizard-container').style.display = 'block';
-        document.getElementById('manual-container').style.display = 'none';
+        if (wiz) wiz.style.display = 'block';
+        if (man) man.style.display = 'none';
+        if (tst) tst.style.display = 'none';
+      } else if (mode === 'teste') {
+        if (wiz) wiz.style.display = 'none';
+        if (man) man.style.display = 'none';
+        if (tst) tst.style.display = 'block';
       } else {
-        document.getElementById('wizard-container').style.display = 'none';
-        document.getElementById('manual-container').style.display = 'block';
+        if (wiz) wiz.style.display = 'none';
+        if (man) man.style.display = 'block';
+        if (tst) tst.style.display = 'none';
       }
     }
 
@@ -3147,6 +3225,13 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
           const prefInput = document.getElementById('prefixInput');
           if (prefInput) prefInput.value = pref;
         }
+        if (data && data.mode) {
+          const radio = document.querySelector(`input[name="automationMode"][value="${data.mode}"]`);
+          if (radio) {
+            radio.checked = true;
+            toggleMode();
+          }
+        }
       })
       .catch(e => {});
   </script>
@@ -3531,12 +3616,252 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     /* Responsividade */
     @media (max-width: 850px) {
+      .logo-container { display: none !important; }
+      .row-top { grid-template-columns: 1fr 1fr; gap: 12px; }
       .digits-2 { font-size: 2.8rem; }
       .digits-timer { font-size: 3.2rem; }
       .row-footer { grid-template-columns: repeat(2, 1fr); }
-      .logo-container { width: 100px; height: 100px; }
-      .logo-badge { width: 40px; height: 40px; font-size: 0.8rem; }
-      .logo-text { font-size: 0.45rem; }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 6px 4px;
+      }
+      .scoreboard-container {
+        padding: 10px 8px;
+        border-width: 2px;
+        border-radius: 10px;
+        gap: 10px;
+        width: 100%;
+        max-width: 100%;
+      }
+      .mode-selector {
+        gap: 6px;
+        padding-bottom: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .radio-label {
+        font-size: 0.78rem;
+        padding: 4px 6px;
+        gap: 4px;
+      }
+      #test-mode-banner, #active-match-banner {
+        padding: 6px 8px;
+        font-size: 0.72rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+      .row-top {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        align-items: stretch;
+      }
+      .logo-container {
+        display: none !important;
+      }
+      .module-card {
+        width: 100%;
+      }
+      .module-title {
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        margin-bottom: 3px;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+      }
+      .module-subtitle {
+        font-size: 0.65rem;
+        margin-top: 3px;
+      }
+      .display-group {
+        gap: 4px;
+        width: 100%;
+        justify-content: center;
+      }
+      .row-top .led-frame {
+        padding: 4px 6px;
+        min-height: 46px;
+        border-width: 2px;
+        border-radius: 8px;
+        flex: 1;
+        min-width: 0;
+      }
+      input.led-text.digits-3 {
+        font-size: 1.7rem;
+        width: 3.2ch;
+        letter-spacing: 1px;
+      }
+      .btn-controls {
+        gap: 2px;
+        flex-direction: column;
+      }
+      .row-top .btn-step {
+        width: 26px;
+        height: 22px;
+        font-size: 0.9rem;
+        border-radius: 4px;
+      }
+      .row-middle {
+        gap: 6px;
+        width: 100%;
+      }
+      .row-middle .led-frame {
+        min-height: 48px;
+        padding: 4px 8px;
+        border-width: 2px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 280px;
+        justify-content: center;
+      }
+      input.led-text.digits-timer {
+        font-size: 2.1rem;
+        width: 100%;
+        max-width: 260px;
+        letter-spacing: 1px;
+      }
+      .timer-actions {
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        margin-top: 2px;
+      }
+      .btn-timer {
+        padding: 6px 8px;
+        font-size: 0.72rem;
+        border-radius: 6px;
+      }
+      .row-bottom {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 4px;
+        align-items: center;
+        width: 100%;
+      }
+      .row-bottom .module-title {
+        font-size: 0.62rem;
+        letter-spacing: 0px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+      }
+      .row-bottom .module-subtitle {
+        font-size: 0.55rem;
+        margin-top: 2px;
+      }
+      .row-bottom .display-group {
+        gap: 2px;
+        justify-content: center;
+        width: 100%;
+      }
+      .row-bottom .led-frame {
+        padding: 2px 4px;
+        min-height: 38px;
+        border-width: 2px;
+        border-radius: 6px;
+        min-width: 0;
+      }
+      input.led-text.digits-2 {
+        font-size: 1.4rem;
+        width: 2.2ch;
+        letter-spacing: 0.5px;
+      }
+      .row-bottom .btn-step {
+        width: 20px;
+        height: 18px;
+        font-size: 0.75rem;
+        border-radius: 3px;
+      }
+      .row-bottom .btn-controls {
+        gap: 2px;
+      }
+      .row-footer {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .btn-action {
+        padding: 8px 4px;
+        font-size: 0.7rem;
+        gap: 4px;
+        border-radius: 6px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      body {
+        padding: 2px;
+      }
+      .scoreboard-container {
+        padding: 6px 3px;
+        gap: 8px;
+      }
+      .radio-label {
+        font-size: 0.72rem;
+        padding: 3px 4px;
+      }
+      .row-top {
+        gap: 4px;
+      }
+      .row-top .module-title {
+        font-size: 0.75rem;
+      }
+      .row-top .led-frame {
+        padding: 3px 4px;
+        min-height: 42px;
+      }
+      input.led-text.digits-3 {
+        font-size: 1.5rem;
+        width: 3.1ch;
+        letter-spacing: 0.5px;
+      }
+      .row-top .btn-step {
+        width: 24px;
+        height: 20px;
+        font-size: 0.85rem;
+      }
+      .row-middle .led-frame {
+        min-height: 44px;
+        padding: 3px 4px;
+      }
+      input.led-text.digits-timer {
+        font-size: 1.85rem;
+        max-width: 240px;
+        letter-spacing: 0.5px;
+      }
+      .btn-timer {
+        padding: 5px 6px;
+        font-size: 0.65rem;
+      }
+      .row-bottom {
+        gap: 2px;
+      }
+      .row-bottom .module-title {
+        font-size: 0.55rem;
+      }
+      .row-bottom .led-frame {
+        padding: 2px 2px;
+        min-height: 34px;
+      }
+      input.led-text.digits-2 {
+        font-size: 1.25rem;
+        width: 2.1ch;
+      }
+      .row-bottom .btn-step {
+        width: 17px;
+        height: 16px;
+        font-size: 0.7rem;
+      }
+      .btn-action {
+        padding: 6px 2px;
+        font-size: 0.62rem;
+        gap: 2px;
+      }
     }
   </style>
 </head>
@@ -3553,6 +3878,22 @@ const char painel_html[] PROGMEM = R"rawliteral(
         <input type="radio" name="panelMode" value="manual" onchange="setPanelMode(this.value)">
         🛠️ Manual Local
       </label>
+      <label class="radio-label">
+        <input type="radio" name="panelMode" value="teste" onchange="setPanelMode(this.value)">
+        🧪 Teste
+      </label>
+    </div>
+
+    <!-- Banner de Modo Teste -->
+    <div id="test-mode-banner" style="display: none; background: #1a1a00; border: 1px solid #4d4d00; border-left: 4px solid #fbc02d; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; align-items: center; justify-content: space-between; font-size: 0.85rem;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="background: #fef08a; color: #854d0e; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.5px;">TESTE ATIVO</span>
+        <span style="color: #fde047; font-weight: 700;">Todos os dígitos transitando de 1 em 1 segundo (0 a 9)</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #aaa; font-size: 0.8rem;">Dígito:</span>
+        <span id="test-current-digit" style="background: #333; color: #fff; font-weight: 800; font-size: 1.1rem; padding: 2px 10px; border-radius: 4px; border: 1px solid #555;">0</span>
+      </div>
     </div>
 
     <!-- Banner de Partida Sincronizada com Filtro -->
@@ -3977,7 +4318,14 @@ const char painel_html[] PROGMEM = R"rawliteral(
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'state') {
-            applyScoreboardState(data);
+            if (data.automationMode && data.automationMode !== currentPanelMode) {
+              const radio = document.querySelector(`input[name="panelMode"][value="${data.automationMode}"]`);
+              if (radio) radio.checked = true;
+              setPanelMode(data.automationMode, false);
+            }
+            if (currentPanelMode !== 'teste') {
+              applyScoreboardState(data);
+            }
           }
         } catch (e) {
           console.error('Erro ao processar JSON do WebSocket:', e);
@@ -4020,9 +4368,15 @@ const char painel_html[] PROGMEM = R"rawliteral(
       sendScoreboardAction({ action: 'set', target: id, value: val });
     }
 
+    let testInterval = null;
+    let testVal = 0;
+
     function setPanelMode(mode, saveToServer = true) {
       currentPanelMode = mode;
       const isAuto = (mode === 'automatico');
+      const isTest = (mode === 'teste');
+      const disableControls = isAuto || isTest;
+
       if (saveToServer) {
         fetch('/api/automation/mode', {
           method: 'POST',
@@ -4031,31 +4385,73 @@ const char painel_html[] PROGMEM = R"rawliteral(
         }).catch(e => console.warn('Falha ao salvar modo', e));
       }
 
+      if (testInterval) {
+        clearInterval(testInterval);
+        testInterval = null;
+      }
+
       // Manter botões no layout (sem display: none) para evitar tremor/salto estrutural na tela
       document.querySelectorAll('.btn-step').forEach(btn => {
-        btn.disabled = isAuto;
-        btn.style.opacity = isAuto ? '0.35' : '1';
-        btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
-        btn.style.pointerEvents = isAuto ? 'none' : 'auto';
+        btn.disabled = disableControls;
+        btn.style.opacity = disableControls ? '0.35' : '1';
+        btn.style.cursor = disableControls ? 'not-allowed' : 'pointer';
+        btn.style.pointerEvents = disableControls ? 'none' : 'auto';
       });
       document.querySelectorAll('.timer-actions button').forEach(btn => {
-        btn.disabled = isAuto;
-        btn.style.opacity = isAuto ? '0.4' : '1';
-        btn.style.cursor = isAuto ? 'not-allowed' : 'pointer';
-        btn.style.pointerEvents = isAuto ? 'none' : 'auto';
+        btn.disabled = disableControls;
+        btn.style.opacity = disableControls ? '0.4' : '1';
+        btn.style.cursor = disableControls ? 'not-allowed' : 'pointer';
+        btn.style.pointerEvents = disableControls ? 'none' : 'auto';
       });
       document.querySelectorAll('input.led-text').forEach(input => {
-        if (isAuto) input.setAttribute('readonly', 'true');
+        if (disableControls) input.setAttribute('readonly', 'true');
         else input.removeAttribute('readonly');
       });
 
       // Habilitar/Desabilitar timer input separadamente
       const timerEl = document.getElementById('timer-display');
-      if (isAuto) timerEl.setAttribute('readonly', 'true');
-      else timerEl.removeAttribute('readonly');
+      if (timerEl) {
+        if (disableControls) timerEl.setAttribute('readonly', 'true');
+        else timerEl.removeAttribute('readonly');
+      }
 
-      if (isAuto) {
-        pollScoreboardAjax();
+      const testBanner = document.getElementById('test-mode-banner');
+      const activeMatchBanner = document.getElementById('active-match-banner');
+
+      if (isTest) {
+        if (activeMatchBanner) activeMatchBanner.style.display = 'none';
+        if (testBanner) testBanner.style.display = 'flex';
+        testVal = 0;
+        const updateTestDigits = () => {
+          const v3 = String(testVal).repeat(3);
+          const v2 = String(testVal).repeat(2);
+          const vTime = `${v2}:${v2}:${v2}`;
+          const elA = document.getElementById('score-a');
+          const elB = document.getElementById('score-b');
+          const elFA = document.getElementById('fouls-a');
+          const elFB = document.getElementById('fouls-b');
+          const elP = document.getElementById('period');
+          if (elA) elA.value = v3;
+          if (elB) elB.value = v3;
+          if (elFA) elFA.value = v2;
+          if (elFB) elFB.value = v2;
+          if (elP) elP.value = v2;
+          if (timerEl) timerEl.value = vTime;
+          const numEl = document.getElementById('test-current-digit');
+          if (numEl) numEl.innerText = testVal;
+          testVal = (testVal + 1) % 10;
+        };
+        updateTestDigits();
+        testInterval = setInterval(updateTestDigits, 1000);
+      } else {
+        if (testBanner) testBanner.style.display = 'none';
+        fetch('/api/scoreboard/state')
+          .then(r => r.json())
+          .then(data => applyScoreboardState(data))
+          .catch(() => {});
+        if (isAuto) {
+          pollScoreboardAjax();
+        }
       }
     }
 

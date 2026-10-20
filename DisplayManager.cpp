@@ -82,6 +82,38 @@ void drawDigit(int digitIndex, int val, uint32_t color) {
 }
 
 void updatePhysicalDisplays() {
+  static String lastMode = "";
+  if (automationConfig.mode == "teste") {
+    static unsigned long lastTestChangeMillis = 0;
+    static int testDigitVal = 0;
+    unsigned long now = millis();
+    if (lastMode != "teste") {
+      lastMode = "teste";
+      lastTestChangeMillis = now;
+      testDigitVal = 0;
+      invalidateDisplayCache();
+    }
+    if (now - lastTestChangeMillis >= 1000) {
+      lastTestChangeMillis = now;
+      testDigitVal = (testDigitVal + 1) % 10;
+    }
+    for (int i = 0; i < 18; i++) {
+      drawDigit(i, testDigitVal, getDigitColor(i));
+    }
+    if (separatorPixels != nullptr && !cachedSeparatorLit) {
+      for (int led = 0; led < 5; led++) {
+        separatorPixels->setPixelColor(led, 0xFFFFFF);
+      }
+      separatorPixels->show();
+      cachedSeparatorLit = true;
+    }
+    return;
+  }
+  if (lastMode == "teste") {
+    lastMode = automationConfig.mode;
+    invalidateDisplayCache();
+  }
+
   // Scores Time A (3 digits: Centena, Dezena, Unidade)
   drawDigit(0, scoreA / 100, getDigitColor(0));
   drawDigit(1, (scoreA / 10) % 10, getDigitColor(1));

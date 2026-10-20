@@ -486,6 +486,58 @@
     .toast-success { border-left: 5px solid #4CAF50; }
     .toast-error { border-left: 5px solid #F44336; }
     .toast-info { border-left: 5px solid #2196F3; }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 6px 4px;
+      }
+      .main-container {
+        padding: 12px 8px;
+        border-radius: 10px;
+        gap: 15px;
+      }
+      .header-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .header-title h1 {
+        font-size: 1.1rem;
+      }
+      .mode-selector {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.9em;
+      }
+      .mode-selector label {
+        margin-right: 0 !important;
+        font-size: 0.85em !important;
+      }
+      .stepper-bar {
+        gap: 3px;
+      }
+      .step-circle {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+      }
+      .step-label {
+        font-size: 0.6rem;
+      }
+      .options-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .footer-bar {
+        padding-top: 12px;
+      }
+      .btn-action {
+        padding: 10px 14px;
+        font-size: 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -508,8 +560,11 @@
       <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
         <input type="radio" name="automationMode" value="automatico" checked onchange="toggleMode()"> 🤖 Automático (Via API)
       </label>
-      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+      <label style="margin-right: 20px; cursor: pointer; color: #fff; font-size: 1.1em;">
         <input type="radio" name="automationMode" value="manual" onchange="toggleMode()"> ✍️ Manual (Local)
+      </label>
+      <label style="cursor: pointer; color: #fff; font-size: 1.1em;">
+        <input type="radio" name="automationMode" value="teste" onchange="toggleMode()"> 🧪 Teste (0 a 9)
       </label>
     </div>
 
@@ -660,6 +715,19 @@
       </button>
     </div>
 
+    <!-- Container do Teste -->
+    <div id="test-container" style="display: none; padding: 25px; background: #1a1a1a; border-radius: 12px; margin-top: 15px; border: 1px solid #4d4d00; text-align: center;">
+      <div style="font-size: 2.2rem; margin-bottom: 10px;">🧪</div>
+      <div class="card-title" style="margin-bottom: 12px; color: #fde047;">Modo de Teste de Dígitos</div>
+      <p style="color: #ccc; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">
+        Neste modo, todos os 18 dígitos do placar (placar A, placar B, faltas, período e cronômetro) ficam ciclando continuamente de <strong>0 a 9</strong> a cada <strong>1 segundo</strong> para teste visual e validação dos módulos LED.
+      </p>
+      <div style="display: inline-flex; align-items: center; gap: 10px; background: #262626; padding: 10px 20px; border-radius: 8px; border: 1px solid #444; color: #fff; font-weight: 600;">
+        <span>Status do Modo:</span>
+        <span style="color: #4ade80;">Ativo e ciclando em tempo real</span>
+      </div>
+    </div>
+
   </div>
 
   <div id="toast" class="toast-notification">
@@ -698,12 +766,22 @@
         body: JSON.stringify(wizardData)
       }).catch(e => console.log(e));
 
+      const wiz = document.getElementById('wizard-container');
+      const man = document.getElementById('manual-container');
+      const tst = document.getElementById('test-container');
+
       if (mode === 'automatico') {
-        document.getElementById('wizard-container').style.display = 'block';
-        document.getElementById('manual-container').style.display = 'none';
+        if (wiz) wiz.style.display = 'block';
+        if (man) man.style.display = 'none';
+        if (tst) tst.style.display = 'none';
+      } else if (mode === 'teste') {
+        if (wiz) wiz.style.display = 'none';
+        if (man) man.style.display = 'none';
+        if (tst) tst.style.display = 'block';
       } else {
-        document.getElementById('wizard-container').style.display = 'none';
-        document.getElementById('manual-container').style.display = 'block';
+        if (wiz) wiz.style.display = 'none';
+        if (man) man.style.display = 'block';
+        if (tst) tst.style.display = 'none';
       }
     }
 
@@ -1310,6 +1388,13 @@
           if (portInput) portInput.value = p;
           const prefInput = document.getElementById('prefixInput');
           if (prefInput) prefInput.value = pref;
+        }
+        if (data && data.mode) {
+          const radio = document.querySelector(`input[name="automationMode"][value="${data.mode}"]`);
+          if (radio) {
+            radio.checked = true;
+            toggleMode();
+          }
         }
       })
       .catch(e => {});

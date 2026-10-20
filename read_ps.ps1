@@ -1,10 +1,10 @@
-$port = New-Object System.IO.Ports.SerialPort "COM7", 115200
+$port = New-Object System.IO.Ports.SerialPort "COM6", 115200
 $port.ReadTimeout = 1000
 try {
     $port.Open()
-    $port.DtrEnable = $true
-    $port.RtsEnable = $true
-    Start-Sleep -Milliseconds 800
+    $port.DtrEnable = $false
+    $port.RtsEnable = $false
+    Start-Sleep -Milliseconds 1500
     $data = $port.ReadExisting()
     Write-Output "SERIAL:"
     Write-Output $data

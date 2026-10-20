@@ -162,23 +162,8 @@ void setup() {
     Serial.println("mDNS inicial ativo: http://painel.local");
   }
   
-  // Iniciar servidor HTTP na porta 80 (servidor web principal - rápido, direto e sem avisos de certificado)
-  server = new ESPWebServer(wifiConfig.httpPort);
-
-  // Iniciar servidor HTTPS na porta 443 apenas para redirecionar para HTTP e limpar cache HSTS de navegadores
-  httpsServer = new ESPWebServerSecure(443);
-  httpsServer->setServerKeyAndCert(server_key_der, server_key_der_len, server_cert_der, server_cert_der_len);
-  httpsServer->onNotFound([]() {
-    String host = httpsServer->hostHeader();
-    int colon = host.indexOf(':');
-    if (colon >= 0) host = host.substring(0, colon);
-    if (host.length() == 0) host = "painel.local";
-    String target = "http://" + host + httpsServer->uri();
-    httpsServer->sendHeader("Location", target, true);
-    httpsServer->sendHeader("Strict-Transport-Security", "max-age=0", true);
-    httpsServer->send(302, "text/plain", "");
-  });
-  httpsServer->begin();
+  // Start Web Server on custom HTTP port
+  server = new WebServer(wifiConfig.httpPort);
   
   const char * headerKeys[] = {"Cookie"};
   server->collectHeaders(headerKeys, 1);
@@ -278,7 +263,6 @@ void loop() {
   // Feed web servers and captive portal DNS
   dnsServer.processNextRequest();
   if (server != nullptr) server->handleClient();
-  if (httpsServer != nullptr) httpsServer->handleClient();
   if (webSocket != nullptr) webSocket->loop();
   
   unsigned long now = millis();

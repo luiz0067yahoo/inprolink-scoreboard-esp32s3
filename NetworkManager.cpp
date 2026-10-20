@@ -517,6 +517,10 @@ void handleAutomationConfig() {
   Serial.print(", Part=");
   Serial.println(automationConfig.partida);
 
+  invalidateDisplayCache();
+  updatePhysicalDisplays();
+  broadcastState();
+
   server->send(200, "application/json", "{\"status\":\"success\"}");
 }
 
@@ -540,6 +544,10 @@ void handleAutomationMode() {
   String out;
   serializeJson(existDoc, out);
   preferences.putString("automation", out);
+
+  invalidateDisplayCache();
+  updatePhysicalDisplays();
+  broadcastState();
 
   server->send(200, "application/json", "{\"status\":\"success\"}");
 }
