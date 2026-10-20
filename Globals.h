@@ -55,6 +55,7 @@ extern int scoreB;
 extern int foulsA;
 extern int foulsB;
 extern int period;
+extern int panelBrightness;
 
 extern bool timerRunning;
 extern unsigned long timerLastMillis;

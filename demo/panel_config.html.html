@@ -568,6 +568,35 @@
       </label>
     </div>
 
+    <!-- Controle de Brilho dos LEDs -->
+    <div style="background:#111; border:1px solid #282828; border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.5rem;">☀️</span>
+          <div>
+            <h3 style="font-size:1rem; font-weight:700; color:#fff;">Brilho do Painel (LEDs)</h3>
+            <p style="font-size:0.8rem; color:#888;">Ajuste imediato da intensidade luminosa de todos os dígitos</p>
+          </div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:6px; background:#181818; padding:6px 14px; border-radius:8px; border:1px solid #333;">
+          <span id="cfg-brightness-pct" style="font-family:'Orbitron',monospace; font-size:1.3rem; font-weight:900; color:#fbbf24;">39%</span>
+          <span id="cfg-brightness-val" style="font-size:0.8rem; color:#888;">(100/255)</span>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+        <input type="range" id="cfg-brightness-slider" min="5" max="255" value="100"
+          style="flex:1; min-width:200px; height:8px; accent-color:#f59e0b; cursor:pointer; background:#222; border-radius:5px;"
+          oninput="onConfigBrightnessChange(this.value)">
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(25)">25%</button>
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(50)">50%</button>
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(75)">75%</button>
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(100)">100%</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Stepper Navigation Header (Passo 4: Rodada, Passo 5: Partida) -->
     <div id="wizard-container">
       <div class="stepper-bar">
@@ -1398,6 +1427,54 @@
         }
       })
       .catch(e => {});
+
+    // Gerenciamento de Brilho dos LEDs
+    let cfgBrightness = 100;
+    let cfgBrightnessDebounce = null;
+
+    function fetchConfigBrightness() {
+      fetch('/api/brightness')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.brightness !== undefined) {
+            cfgBrightness = parseInt(data.brightness);
+            updateConfigBrightnessUI(cfgBrightness);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function updateConfigBrightnessUI(val) {
+      cfgBrightness = parseInt(val);
+      const pct = Math.round((cfgBrightness / 255) * 100);
+      const slider = document.getElementById('cfg-brightness-slider');
+      const pctSpan = document.getElementById('cfg-brightness-pct');
+      const valSpan = document.getElementById('cfg-brightness-val');
+      if (slider) slider.value = cfgBrightness;
+      if (pctSpan) pctSpan.textContent = pct + '%';
+      if (valSpan) valSpan.textContent = `(${cfgBrightness}/255)`;
+    }
+
+    function onConfigBrightnessChange(val) {
+      cfgBrightness = parseInt(val);
+      updateConfigBrightnessUI(cfgBrightness);
+
+      if (cfgBrightnessDebounce) clearTimeout(cfgBrightnessDebounce);
+      cfgBrightnessDebounce = setTimeout(() => {
+        fetch('/api/brightness', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brightness: cfgBrightness })
+        }).catch(() => {});
+      }, 40);
+    }
+
+    function setConfigBrightnessPreset(pct) {
+      const val = Math.round((pct / 100) * 255);
+      onConfigBrightnessChange(val);
+    }
+
+    fetchConfigBrightness();
   </script>
 </body>
 </html>

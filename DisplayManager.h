@@ -12,5 +12,6 @@ uint32_t getDigitColor(int index);
 void drawDigit(int digitIndex, int val, uint32_t color);
 void updatePhysicalDisplays();
 void invalidateDisplayCache();
+void setDisplayBrightness(int brightness);
 
 #endif // DISPLAY_MANAGER_H

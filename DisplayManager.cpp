@@ -157,3 +157,17 @@ void updatePhysicalDisplays() {
     cachedSeparatorLit = true;
   }
 }
+
+void setDisplayBrightness(int brightness) {
+  panelBrightness = constrain(brightness, 0, 255);
+  for (int i = 0; i < 18; i++) {
+    if (digits[i] != nullptr) {
+      digits[i]->setBrightness(panelBrightness);
+    }
+  }
+  if (separatorPixels != nullptr) {
+    separatorPixels->setBrightness(panelBrightness);
+  }
+  invalidateDisplayCache();
+  updatePhysicalDisplays();
+}

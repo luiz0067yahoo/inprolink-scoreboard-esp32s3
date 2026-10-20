@@ -100,19 +100,22 @@ void setup() {
     automationConfig.rodada = getStringField("rodada", "rodadaId", "round_id");
   }
   
+  // Carregar brilho salvo (padrão 100)
+  panelBrightness = preferences.getInt("brightness", 100);
+
   // Initialize WS2812B NeoPixel strips for the 18 digits and display 0 on all of them
   invalidateDisplayCache();
   for (int i = 0; i < 18; i++) {
     digits[i] = new Adafruit_NeoPixel(35, digitPins[i], NEO_GRB + NEO_KHZ800);
     digits[i]->begin();
-    digits[i]->setBrightness(50);
+    digits[i]->setBrightness(panelBrightness);
     drawDigit(i, 0, getDigitColor(i));
   }
 
   // Inicializar 5 LEDs sempre acesos na GPIO 15
   separatorPixels = new Adafruit_NeoPixel(5, 15, NEO_GRB + NEO_KHZ800);
   separatorPixels->begin();
-  separatorPixels->setBrightness(50);
+  separatorPixels->setBrightness(panelBrightness);
   for (int led = 0; led < 5; led++) {
     separatorPixels->setPixelColor(led, 0xFFFFFF);
   }
@@ -214,6 +217,8 @@ void setup() {
   server->on("/api/scoreboard", HTTP_GET, handleScoreboardState);
   server->on("/api/state", HTTP_GET, handleScoreboardState);
   server->on("/api/scoreboard/action", HTTP_POST, handleScoreboardAction);
+  server->on("/api/brightness", HTTP_GET, handleBrightnessGet);
+  server->on("/api/brightness", HTTP_POST, handleBrightnessSet);
   
   // Rotas de detecção de Captive Portal (Android, Apple iOS/macOS, Windows, Firefox/Chrome)
   server->on("/generate_204", handleCaptivePortalRedirect);

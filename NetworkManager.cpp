@@ -54,6 +54,8 @@ void broadcastState() {
   doc["modalidade"]       = automationConfig.modalidade;
   doc["automationActive"]  = automationConfig.active;
   doc["automationMode"]    = automationConfig.mode;
+  doc["brightness"]        = panelBrightness;
+  doc["brightnessPercent"] = (int)round(panelBrightness * 100.0 / 255.0);
   
   String response;
   serializeJson(doc, response);
@@ -947,6 +949,8 @@ void handleScoreboardState() {
   doc["modalidade"]       = automationConfig.modalidade;
   doc["automationActive"]  = automationConfig.active;
   doc["automationMode"]    = automationConfig.mode;
+  doc["brightness"]        = panelBrightness;
+  doc["brightnessPercent"] = (int)round(panelBrightness * 100.0 / 255.0);
   
   String json;
   serializeJson(doc, json);
@@ -1035,6 +1039,14 @@ void handleScoreboardAction() {
       }
       updatePhysicalDisplays();
       broadcastState();
+    } else if (strcmp(action, "brightness") == 0) {
+      int b = panelBrightness;
+      if (doc.containsKey("value")) b = doc["value"].as<int>();
+      else if (doc.containsKey("brightness")) b = doc["brightness"].as<int>();
+      else if (doc.containsKey("percent")) b = (int)round(doc["percent"].as<int>() * 255.0 / 100.0);
+      setDisplayBrightness(b);
+      preferences.putInt("brightness", panelBrightness);
+      broadcastState();
     } else if (strcmp(action, "reset_all") == 0) {
       scoreA = 0;
       scoreB = 0;
@@ -1049,6 +1061,48 @@ void handleScoreboardAction() {
   }
   
   handleScoreboardState();
+}
+
+void handleBrightnessGet() {
+  DynamicJsonDocument doc(128);
+  doc["brightness"] = panelBrightness;
+  doc["percent"] = (int)round(panelBrightness * 100.0 / 255.0);
+  String out;
+  serializeJson(doc, out);
+  server->sendHeader("Access-Control-Allow-Origin", "*");
+  server->sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  server->send(200, "application/json", out);
+}
+
+void handleBrightnessSet() {
+  int val = panelBrightness;
+  if (server->hasArg("plain")) {
+    DynamicJsonDocument doc(256);
+    if (!deserializeJson(doc, server->arg("plain"))) {
+      if (doc.containsKey("brightness")) val = doc["brightness"].as<int>();
+      else if (doc.containsKey("value")) val = doc["value"].as<int>();
+      else if (doc.containsKey("percent")) val = (int)round(doc["percent"].as<int>() * 255.0 / 100.0);
+    }
+  } else if (server->hasArg("value")) {
+    val = server->arg("value").toInt();
+  } else if (server->hasArg("brightness")) {
+    val = server->arg("brightness").toInt();
+  } else if (server->hasArg("percent")) {
+    val = (int)round(server->arg("percent").toInt() * 255.0 / 100.0);
+  }
+
+  setDisplayBrightness(val);
+  preferences.putInt("brightness", panelBrightness);
+  broadcastState();
+
+  DynamicJsonDocument resp(128);
+  resp["status"] = "success";
+  resp["brightness"] = panelBrightness;
+  resp["percent"] = (int)round(panelBrightness * 100.0 / 255.0);
+  String out;
+  serializeJson(resp, out);
+  server->sendHeader("Access-Control-Allow-Origin", "*");
+  server->send(200, "application/json", out);
 }
 
 // ==========================================

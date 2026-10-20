@@ -13,6 +13,7 @@ int scoreB = 0;
 int foulsA = 0;
 int foulsB = 0;
 int period = 0;
+int panelBrightness = 100;
 
 bool timerRunning = false;
 unsigned long timerLastMillis = 0;

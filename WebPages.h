@@ -2404,6 +2404,35 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
       </label>
     </div>
 
+    <!-- Controle de Brilho dos LEDs -->
+    <div style="background:#111; border:1px solid #282828; border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.5rem;">☀️</span>
+          <div>
+            <h3 style="font-size:1rem; font-weight:700; color:#fff;">Brilho do Painel (LEDs)</h3>
+            <p style="font-size:0.8rem; color:#888;">Ajuste imediato da intensidade luminosa de todos os dígitos</p>
+          </div>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:6px; background:#181818; padding:6px 14px; border-radius:8px; border:1px solid #333;">
+          <span id="cfg-brightness-pct" style="font-family:'Orbitron',monospace; font-size:1.3rem; font-weight:900; color:#fbbf24;">39%</span>
+          <span id="cfg-brightness-val" style="font-size:0.8rem; color:#888;">(100/255)</span>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+        <input type="range" id="cfg-brightness-slider" min="5" max="255" value="100"
+          style="flex:1; min-width:200px; height:8px; accent-color:#f59e0b; cursor:pointer; background:#222; border-radius:5px;"
+          oninput="onConfigBrightnessChange(this.value)">
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(25)">25%</button>
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(50)">50%</button>
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(75)">75%</button>
+          <button type="button" class="btn-action" style="padding:6px 12px; font-size:0.75rem; background:#1f1f1f; border:1px solid #3a3a3a; color:#fff; border-radius:6px; cursor:pointer;" onclick="setConfigBrightnessPreset(100)">100%</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Stepper Navigation Header (Passo 4: Rodada, Passo 5: Partida) -->
     <div id="wizard-container">
       <div class="stepper-bar">
@@ -3234,6 +3263,54 @@ const char panel_config_html[] PROGMEM = R"rawliteral(
         }
       })
       .catch(e => {});
+
+    // Gerenciamento de Brilho dos LEDs
+    let cfgBrightness = 100;
+    let cfgBrightnessDebounce = null;
+
+    function fetchConfigBrightness() {
+      fetch('/api/brightness')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.brightness !== undefined) {
+            cfgBrightness = parseInt(data.brightness);
+            updateConfigBrightnessUI(cfgBrightness);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function updateConfigBrightnessUI(val) {
+      cfgBrightness = parseInt(val);
+      const pct = Math.round((cfgBrightness / 255) * 100);
+      const slider = document.getElementById('cfg-brightness-slider');
+      const pctSpan = document.getElementById('cfg-brightness-pct');
+      const valSpan = document.getElementById('cfg-brightness-val');
+      if (slider) slider.value = cfgBrightness;
+      if (pctSpan) pctSpan.textContent = pct + '%';
+      if (valSpan) valSpan.textContent = `(${cfgBrightness}/255)`;
+    }
+
+    function onConfigBrightnessChange(val) {
+      cfgBrightness = parseInt(val);
+      updateConfigBrightnessUI(cfgBrightness);
+
+      if (cfgBrightnessDebounce) clearTimeout(cfgBrightnessDebounce);
+      cfgBrightnessDebounce = setTimeout(() => {
+        fetch('/api/brightness', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brightness: cfgBrightness })
+        }).catch(() => {});
+      }, 40);
+    }
+
+    function setConfigBrightnessPreset(pct) {
+      const val = Math.round((pct / 100) * 255);
+      onConfigBrightnessChange(val);
+    }
+
+    fetchConfigBrightness();
   </script>
 </body>
 </html>
@@ -3529,6 +3606,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
 
     .btn-purple { background: linear-gradient(180deg, #8e24aa, #4a148c); }
     .btn-orange { background: linear-gradient(180deg, #ef6c00, #e65100); }
+    .btn-gold { background: linear-gradient(180deg, #f59e0b, #b45309); }
     .btn-teal { background: linear-gradient(180deg, #00838f, #006064); }
     .btn-blue { background: linear-gradient(180deg, #1565c0, #0d47a1); }
 
@@ -4019,6 +4097,7 @@ const char painel_html[] PROGMEM = R"rawliteral(
       <button class="btn-action" style="background:#d32f2f" onclick="logout()">🚪 Sair</button>
       <button class="btn-action btn-purple" onclick="confirmResetScoreboard()">↩️ Zerar Placar</button>
       <button class="btn-action btn-orange" onclick="swapSides()">🔀 Trocar Lado</button>
+      <button class="btn-action btn-gold" onclick="openBrightnessModal()">☀️ Brilho</button>
       <button id="btn-settings" class="btn-action btn-teal" onclick="openSettings()">⚙️ Configurações</button>
       <button class="btn-action btn-blue" onclick="toggleFullscreen()">↕️↔️ Tela Cheia</button>
     </div>
@@ -4062,6 +4141,11 @@ const char painel_html[] PROGMEM = R"rawliteral(
       if (data.foulsA !== undefined) setVal('fouls-a', data.foulsA);
       if (data.foulsB !== undefined) setVal('fouls-b', data.foulsB);
       if (data.period !== undefined) setVal('period', data.period);
+
+      if (data.brightness !== undefined && (!brightnessDebounceTimer || document.activeElement?.id !== 'brightness-slider')) {
+        currentBrightness = parseInt(data.brightness);
+        updateBrightnessUI(currentBrightness);
+      }
 
       const timerEl = document.getElementById('timer-display');
       if (timerEl && document.activeElement !== timerEl && data.timer) {
@@ -4636,11 +4720,13 @@ const char painel_html[] PROGMEM = R"rawliteral(
       if (role === 'Gerente') {
         buttonsContainer.innerHTML = `
           <button class="btn-modal btn-modal-cancel" style="padding:10px 14px;" onclick="closeModal()">Cancelar</button>
+          <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#d97706;" onclick="closeModal(); openBrightnessModal();">☀️ Brilho dos LEDs</button>
           <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#8e24aa;" onclick="window.location.href='panel_config.html.html'">Automação API</button>
         `;
       } else {
         buttonsContainer.innerHTML = `
           <button class="btn-modal btn-modal-cancel" style="padding:10px 14px;" onclick="closeModal()">Cancelar</button>
+          <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#d97706;" onclick="closeModal(); openBrightnessModal();">☀️ Brilho dos LEDs</button>
           <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#1b5e20;" onclick="window.location.href='lan_config.html'">Wi-Fi & Rede</button>
           <button class="btn-modal btn-modal-confirm" style="padding:10px 14px; background:#0d47a1;" onclick="window.location.href='user_adm.html'">Usuários</button>
           <button class="btn-modal btn-modal-ok" style="padding:10px 14px; background:#8e24aa;" onclick="window.location.href='panel_config.html.html'">Automação API</button>
@@ -4649,8 +4735,104 @@ const char painel_html[] PROGMEM = R"rawliteral(
       }
     }
 
+    // Gerenciamento de Brilho dos LEDs (0 a 255)
+    let currentBrightness = 100;
+    let brightnessDebounceTimer = null;
+
+    function fetchBrightness() {
+      fetch('/api/brightness')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.brightness !== undefined) {
+            currentBrightness = parseInt(data.brightness);
+            updateBrightnessUI(currentBrightness);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function updateBrightnessUI(val) {
+      currentBrightness = parseInt(val);
+      const pct = Math.round((currentBrightness / 255) * 100);
+      const slider = document.getElementById('brightness-slider');
+      const valText = document.getElementById('brightness-val-text');
+      const pctText = document.getElementById('brightness-pct-text');
+      if (slider) slider.value = currentBrightness;
+      if (valText) valText.textContent = `(${currentBrightness}/255)`;
+      if (pctText) pctText.textContent = pct + '%';
+    }
+
+    function sendBrightness(val) {
+      val = parseInt(val);
+      currentBrightness = val;
+      updateBrightnessUI(val);
+
+      if (brightnessDebounceTimer) clearTimeout(brightnessDebounceTimer);
+      brightnessDebounceTimer = setTimeout(() => {
+        fetch('/api/brightness', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brightness: val })
+        }).catch(() => {});
+      }, 40);
+    }
+
+    function setBrightnessPreset(pct) {
+      const val = Math.round((pct / 100) * 255);
+      sendBrightness(val);
+    }
+
+    function openBrightnessModal() {
+      const modalIcon = document.getElementById('modal-icon');
+      const modalTitle = document.getElementById('modal-title');
+      const modalMsg = document.getElementById('modal-message');
+      const modalBtns = document.getElementById('modal-buttons');
+
+      modalIcon.textContent = '☀️';
+      modalTitle.textContent = 'Ajuste de Brilho dos LEDs';
+
+      const pct = Math.round((currentBrightness / 255) * 100);
+      modalMsg.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:16px; margin: 15px 0; text-align:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#141414; padding:12px 18px; border-radius:10px; border:1px solid #333;">
+            <span style="font-size:0.9rem; color:#aaa; font-weight:600;">Intensidade Atual:</span>
+            <div style="display:flex; align-items:baseline; gap:6px;">
+              <span id="brightness-pct-text" style="font-family:'Orbitron',monospace; font-size:1.5rem; font-weight:900; color:#fbbf24;">${pct}%</span>
+              <span id="brightness-val-text" style="font-size:0.8rem; color:#888;">(${currentBrightness}/255)</span>
+            </div>
+          </div>
+
+          <div style="padding: 0 5px;">
+            <input type="range" id="brightness-slider" min="5" max="255" value="${currentBrightness}"
+              style="width:100%; height:8px; accent-color:#f59e0b; cursor:pointer; background:#222; border-radius:5px;"
+              oninput="sendBrightness(this.value)">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#666; margin-top:6px;">
+              <span>Mínimo (5)</span>
+              <span>Médio (128)</span>
+              <span>Máximo (255)</span>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+            <button type="button" class="btn-step" style="width:100%; height:38px; font-size:0.85rem; font-weight:700; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; cursor:pointer;" onclick="setBrightnessPreset(25)">25%</button>
+            <button type="button" class="btn-step" style="width:100%; height:38px; font-size:0.85rem; font-weight:700; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; cursor:pointer;" onclick="setBrightnessPreset(50)">50%</button>
+            <button type="button" class="btn-step" style="width:100%; height:38px; font-size:0.85rem; font-weight:700; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; cursor:pointer;" onclick="setBrightnessPreset(75)">75%</button>
+            <button type="button" class="btn-step" style="width:100%; height:38px; font-size:0.85rem; font-weight:700; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; cursor:pointer;" onclick="setBrightnessPreset(100)">100%</button>
+          </div>
+        </div>
+      `;
+
+      modalBtns.style.flexWrap = 'nowrap';
+      modalBtns.innerHTML = `
+        <button class="btn-modal btn-modal-ok" style="width:100%; padding:12px; font-weight:800; background:#d97706;" onclick="closeModal()">✓ Fechar</button>
+      `;
+
+      document.getElementById('modal-overlay').classList.add('active');
+    }
+
     // Inicialização
     connectWs();
+    fetchBrightness();
     pollScoreboardAjax();
     setInterval(pollScoreboardAjax, 1000);
 
