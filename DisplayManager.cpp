@@ -136,17 +136,23 @@ void updatePhysicalDisplays() {
   drawDigit(10, foulsB / 10, getDigitColor(10));
   drawDigit(11, foulsB % 10, getDigitColor(11));
   
-  // Timer HH:MM:SS (6 digits)
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
+  // Timer MM:SS:HH (Dígitos 12 a 17)
+  // Minutos de 00 a 99 (após 99 o próximo dígito é 00)
+  int mins = (totalSeconds / 60) % 100;
   int secs = totalSeconds % 60;
+  int hrs = totalSeconds / 3600;
   
-  drawDigit(12, hrs / 10, getDigitColor(12));
-  drawDigit(13, hrs % 10, getDigitColor(13));
-  drawDigit(14, mins / 10, getDigitColor(14));
-  drawDigit(15, mins % 10, getDigitColor(15));
-  drawDigit(16, secs / 10, getDigitColor(16));
-  drawDigit(17, secs % 10, getDigitColor(17));
+  // Minutos (Dígitos 12 e 13 - GPIO 13 e 14)
+  drawDigit(12, mins / 10, getDigitColor(12));
+  drawDigit(13, mins % 10, getDigitColor(13));
+
+  // Segundos (Dígitos 14 e 15 - GPIO 16 e 17)
+  drawDigit(14, secs / 10, getDigitColor(14));
+  drawDigit(15, secs % 10, getDigitColor(15));
+
+  // Horas (Dígitos 16 e 17 - GPIO 20 e 21)
+  drawDigit(16, hrs / 10, getDigitColor(16));
+  drawDigit(17, hrs % 10, getDigitColor(17));
 
   // LED fixo / separador (5 LEDs na GPIO 15 mantidos acesos)
   if (separatorPixels != nullptr && !cachedSeparatorLit) {

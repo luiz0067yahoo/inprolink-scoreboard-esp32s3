@@ -11,10 +11,9 @@ void sendSingleState(uint8_t num) {
   doc["period"] = period;
   
   char timerStr[16];
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
+  int totalMins = (totalSeconds / 60) % 100;
   int secs = totalSeconds % 60;
-  sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
+  sprintf(timerStr, "%02d:%02d", totalMins, secs);
   doc["timer"] = timerStr;
   
   String response;
@@ -33,10 +32,9 @@ void broadcastState() {
   doc["period"] = period;
   
   char timerStr[16];
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
+  int totalMins = (totalSeconds / 60) % 100;
   int secs = totalSeconds % 60;
-  sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
+  sprintf(timerStr, "%02d:%02d", totalMins, secs);
   doc["timer"] = timerStr;
   doc["timerRunning"] = timerRunning;
   doc["totalSeconds"] = totalSeconds;
@@ -928,10 +926,9 @@ void handleScoreboardState() {
   doc["period"] = period;
   
   char timerStr[16];
-  int hrs = totalSeconds / 3600;
-  int mins = (totalSeconds % 3600) / 60;
+  int totalMins = (totalSeconds / 60) % 100;
   int secs = totalSeconds % 60;
-  sprintf(timerStr, "%02d:%02d:%02d", hrs, mins, secs);
+  sprintf(timerStr, "%02d:%02d", totalMins, secs);
   doc["timer"] = timerStr;
   doc["timerRunning"] = timerRunning;
   doc["totalSeconds"] = totalSeconds;

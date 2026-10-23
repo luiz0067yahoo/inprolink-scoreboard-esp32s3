@@ -149,15 +149,15 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
   |-- GPIO 7 ---> Dezena   |-- GPIO 9 ---> Dezena   |
   |-- GPIO 8 ---> Unidade  |-- GPIO 10 --> Unidade  |
   +------------------------+------------------------+
-  | (Faltas Time B)        | (Cronômetro HH:MM:SS)  |
-  |-- GPIO 11 --> Dezena   |-- GPIO 13 --> Horas (D)|
-  |-- GPIO 12 --> Unidade  |-- GPIO 14 --> Horas (U)|
-  +------------------------|-- GPIO 15 --> Fixo 5LED|
-                           |-- GPIO 16 --> Min (D)  |
-                           |-- GPIO 17 --> Min (U)  |
-                           |-- GPIO 20 --> Seg (D)  |
-                           |-- GPIO 21 --> Seg (U)  |
-                           +------------------------+
+  | (Faltas Time B)        | (Cronômetro MM:SS:HH)  |
+  |-- GPIO 11 --> Dezena   |-- GPIO 13 --> Min (D)   |
+  |-- GPIO 12 --> Unidade  |-- GPIO 14 --> Min (U)   |
+  +------------------------|-- GPIO 15 --> Fixo 5LED |
+                           |-- GPIO 16 --> Seg (D)   |
+                           |-- GPIO 17 --> Seg (U)   |
+                           |-- GPIO 20 --> Horas (D) |
+                           |-- GPIO 21 --> Horas (U) |
+                           +-------------------------+
 ```
 
 #### Tabela Detalhada de Pinos
@@ -176,13 +176,13 @@ Abaixo está o diagrama completo das conexões de dados entre os pinos GPIO do E
 | | Dígito 9 | Unidade | `GPIO 10` | 35 LEDs |
 | **Faltas Time B** (2 dígitos: 0-99) | Dígito 10 | Dezena | `GPIO 11` | 35 LEDs |
 | | Dígito 11 | Unidade | `GPIO 12` | 35 LEDs |
-| **Cronômetro** (6 dígitos / HH:MM:SS) | Dígito 12 | Horas (Dezena) | `GPIO 13` | 35 LEDs |
-| | Dígito 13 | Horas (Unidade) | `GPIO 14` | 35 LEDs |
+| **Cronômetro** (6 dígitos / MM:SS:HH) | Dígito 12 | Minutos (Dezena) | `GPIO 13` | 35 LEDs |
+| | Dígito 13 | Minutos (Unidade) | `GPIO 14` | 35 LEDs |
 | | — | Indicador / LEDs Fixos | `GPIO 15` | 5 LEDs |
-| | Dígito 14 | Minutos (Dezena) | `GPIO 16` | 35 LEDs |
-| | Dígito 15 | Minutos (Unidade) | `GPIO 17` | 35 LEDs |
-| | Dígito 16 | Segundos (Dezena) | `GPIO 20` | 35 LEDs |
-| | Dígito 17 | Segundos (Unidade) | `GPIO 21` | 35 LEDs |
+| | Dígito 14 | Segundos (Dezena) | `GPIO 16` | 35 LEDs |
+| | Dígito 15 | Segundos (Unidade) | `GPIO 17` | 35 LEDs |
+| | Dígito 16 | Horas (Dezena) | `GPIO 20` | 35 LEDs |
+| | Dígito 17 | Horas (Unidade) | `GPIO 21` | 35 LEDs |
 | **Reset Físico NVS** | Botão | Pressionar por 5s | `GPIO 0` (BOOT) | — |
 
 ---

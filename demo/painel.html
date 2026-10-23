@@ -136,9 +136,9 @@
     input.led-text.digits-3 {
       width: 3.4ch;
     }
-    /* Timer input needs wider width for HH:MM:SS */
+    /* Timer input width for MM:SS */
     input.led-text.digits-timer {
-      width: 9.2ch;
+      width: 5.8ch;
     }
     input.led-text[readonly] { pointer-events: none; }
 
@@ -710,13 +710,12 @@
       </div>
     </div>
 
-    <!-- Linha Central: Cronômetro (6 dígitos) -->
+    <!-- Linha Central: Cronômetro (MM:SS) -->
     <div class="row-middle">
       <div class="led-frame">
         <input type="text" class="led-text digits-timer" id="timer-display"
-          value="00:00:00" maxlength="8" placeholder="HH:MM:SS"
+          value="00:00" maxlength="5" placeholder="MM:SS"
           oninput="timerMask(this)" onchange="timerInputChanged()" readonly>
-
       </div>
       <div class="timer-actions">
         <button class="btn-timer btn-start" onclick="startTimer()">▶️ Iniciar</button>
@@ -795,7 +794,7 @@
   </div>
 
   <script>
-    if (sessionStorage.getItem('authenticated') !== 'true') {
+    if (window.location.protocol !== 'file:' && sessionStorage.getItem('authenticated') !== 'true') {
       window.location.href = 'login.html';
     }
 
@@ -828,13 +827,6 @@
         updateBrightnessUI(currentBrightness);
       }
 
-      const timerEl = document.getElementById('timer-display');
-      if (timerEl && document.activeElement !== timerEl && data.timer) {
-        if (timerEl.value !== data.timer) {
-          timerEl.value = data.timer;
-        }
-      }
-      
       if (data.teamNameA) {
         const titleA = document.getElementById('title-team-a');
         if (titleA) titleA.innerText = data.teamNameA.toUpperCase();
@@ -843,14 +835,19 @@
         const titleB = document.getElementById('title-team-b');
         if (titleB) titleB.innerText = data.teamNameB.toUpperCase();
       }
-      
+
+      const timerEl = document.getElementById('timer-display');
       if (data.totalSeconds !== undefined) {
         totalSeconds = data.totalSeconds;
+        updateTimerDisplay();
       } else if (data.timer) {
         const parts = data.timer.split(':');
         if (parts.length === 3) {
           totalSeconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+        } else if (parts.length === 2) {
+          totalSeconds = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
         }
+        updateTimerDisplay();
       }
     }
 
@@ -1190,7 +1187,7 @@
         const updateTestDigits = () => {
           const v3 = String(testVal).repeat(3);
           const v2 = String(testVal).repeat(2);
-          const vTime = `${v2}:${v2}:${v2}`;
+          const vTime = `${v2}:${v2}`;
           const elA = document.getElementById('score-a');
           const elB = document.getElementById('score-b');
           const elFA = document.getElementById('fouls-a');
@@ -1220,12 +1217,11 @@
       }
     }
 
-    // Máscara automática HH:MM:SS
+    // Máscara automática MM:SS (minutos até 99)
     function timerMask(el) {
-      let v = el.value.replace(/[^0-9]/g, '').substring(0, 6);
+      let v = el.value.replace(/[^0-9]/g, '').substring(0, 4);
       let out = '';
-      if (v.length > 4) out = v.substring(0,2) + ':' + v.substring(2,4) + ':' + v.substring(4,6);
-      else if (v.length > 2) out = v.substring(0,2) + ':' + v.substring(2);
+      if (v.length > 2) out = v.substring(0, 2) + ':' + v.substring(2, 4);
       else out = v;
       el.value = out;
     }
@@ -1233,28 +1229,33 @@
     function timerInputChanged() {
       const el = document.getElementById('timer-display');
       const raw = el.value.trim();
-      // Accept HH:MM:SS or MM:SS or raw seconds
+      // Aceita MM:SS ou HH:MM:SS ou segundos puros
       const parts = raw.split(':').map(p => parseInt(p, 10) || 0);
       let secs = 0;
-      if (parts.length === 3) secs = parts[0] * 3600 + parts[1] * 60 + parts[2];
-      else if (parts.length === 2) secs = parts[0] * 60 + parts[1];
-      else secs = parts[0];
+      if (parts.length === 3) {
+        secs = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      } else if (parts.length === 2) {
+        let m = Math.max(0, parts[0]) % 100;
+        let s = Math.min(59, Math.max(0, parts[1]));
+        secs = m * 60 + s;
+      } else if (parts.length === 1) {
+        secs = Math.max(0, parts[0]);
+      }
       if (secs < 0) secs = 0;
       totalSeconds = secs;
-      // Normalizar display (ex: 90:00 -> 01:30:00)
       updateTimerDisplay();
       // Sincronizar com ESP32
       sendScoreboardAction({ action: 'timer', command: 'set', value: totalSeconds });
     }
 
-    // Lógica do Cronômetro Local (Fallback)
+    // Lógica do Cronômetro Local (Fallback) - Formato MM:SS (de 00 a 99; após 99 o próximo é 00)
     function updateTimerDisplay() {
-      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const totalMins = Math.floor(totalSeconds / 60) % 100;
+      const mins = String(totalMins).padStart(2, '0');
       const secs = String(totalSeconds % 60).padStart(2, '0');
       const el = document.getElementById('timer-display');
-      if (document.activeElement !== el) {
-        el.value = `${hrs}:${mins}:${secs}`;
+      if (el && document.activeElement !== el) {
+        el.value = `${mins}:${secs}`;
       }
     }
 
